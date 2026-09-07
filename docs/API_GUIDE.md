@@ -199,7 +199,7 @@ def refresh_google_access_token(refresh_token: str) -> dict:
 
 ## 4. Gemini 3.8 Flash API (Google AI Studio / Vertex AI)
 
-Used for multimodal video understanding. It takes the video file and timestamps of the detected cliffs to explain *why* the audience left.
+Used by the **Multimodal Forensic Agent** (The Visual Detective) and the **Audio & Cadence Agent** (The Sound Engineer) for multimodal video and audio understanding. They use this API with function calling to dynamically investigate the video file, audio tracks, and timestamps of the detected cliffs to explain *why* the audience left.
 
 - **Package:** `google-genai` (Python SDK)
 - **Model:** `gemini-3.8-flash`
@@ -219,14 +219,13 @@ import os
 # Initialize client (uses GEMINI_API_KEY env var)
 client = genai.Client()
 
-# Define the structured output schema we want from Gemini
-class ForensicReportSchema(BaseModel):
-    timestamp: str
-    root_cause: str
-    prescriptive_recommendation: str
-    severity_score: int # 1 to 10
+# Define the structured output schema we want from the Forensic Agent
+class VisualInvestigationResult(BaseModel):
+    visual_hypothesis: str
+    tools_used: list[str]
+    confidence_score: float
 
-def analyze_video_cliff(file_path: str, timestamp_sec: float) -> ForensicReportSchema:
+def analyze_video_cliff(file_path: str, timestamp_sec: float) -> VisualInvestigationResult:
     print(f"Uploading file: {file_path}")
     
     # 1. Upload the file
@@ -243,16 +242,15 @@ def analyze_video_cliff(file_path: str, timestamp_sec: float) -> ForensicReportS
     if video_file.state.name == "FAILED":
         raise Exception("Video processing failed in Gemini API.")
         
-    print("\nFile ready. Starting analysis...")
+    print("\nFile ready. Starting investigation...")
     
     # 3. Generate Content
-    # We instruct the model to look at a specific timestamp window
+    # Instruct the Multimodal Forensic Agent to investigate
     prompt = f"""
-    Analyze this video specifically around the timestamp {timestamp_sec} seconds.
+    Investigate this video specifically around the timestamp {timestamp_sec} seconds.
     There is a massive audience drop-off at this exact moment. 
-    Act as a YouTube retention expert. Determine the root cause of the drop-off.
-    Look for: boring pacing, confusing transitions, awkward silences, bait-and-switch content, or poor audio/visuals.
-    Provide an actionable recommendation to fix this in future videos.
+    You are the Multimodal Forensic Agent. Use your visual inspection tools 
+    (e.g., check for boring pacing, confusing transitions, awkward cuts) to form a hypothesis.
     """
     
     response = client.models.generate_content(
@@ -260,7 +258,7 @@ def analyze_video_cliff(file_path: str, timestamp_sec: float) -> ForensicReportS
         contents=[video_file, prompt],
         config=genai.types.GenerateContentConfig(
             response_mime_type="application/json",
-            response_schema=ForensicReportSchema,
+            response_schema=VisualInvestigationResult,
             temperature=0.4, # Lower temp for more analytical output
         ),
     )
@@ -268,22 +266,22 @@ def analyze_video_cliff(file_path: str, timestamp_sec: float) -> ForensicReportS
     # 4. Cleanup: Delete the file after analysis to save quota
     client.files.delete(name=video_file.name)
     
-    return response.text # This will be a JSON string matching ForensicReportSchema
+    return response.text # This will be a JSON string matching VisualInvestigationResult
 ```
 
 ---
 
 ## 5. Groq API
 
-Used for generating the final polished report (GPT-OSS 20B) and the interactive chat agent (GPT-OSS 120B).
+Used for orchestration and reasoning across multiple agents: the **Supervisor Agent** (Lead Investigator), the **Retention Critic Agent** (The Skeptic), the **Report Synthesizer Agent** (GPT-OSS 20B), and the **Strategist Chat Agent** (GPT-OSS 120B).
 
 - **Base URL:** `https://api.groq.com/openai/v1`
 - **Auth:** Bearer token (`GROQ_API_KEY`)
 - **Package:** `groq` Python package (OpenAI SDK compatible)
 
 ### Available Models
-- `openai/gpt-oss-120b`: Flagship reasoning model. Use for the Chat Agent.
-- `openai/gpt-oss-20b`: Fast, precise. Use for report generation.
+- `openai/gpt-oss-120b`: Flagship reasoning model. Use for the Supervisor Agent, Retention Critic Agent, and Strategist Chat Agent.
+- `openai/gpt-oss-20b`: Fast, precise. Use for the Report Synthesizer Agent.
 - `groq/compound-mini`: Fallback model.
 
 ### Code Example: Report Generation
@@ -295,14 +293,14 @@ from groq import Groq
 # Uses GROQ_API_KEY env var
 client = Groq()
 
-def generate_final_report(gemini_analysis_data: str, video_title: str):
+def synthesize_final_report(verified_findings: str, video_title: str):
     system_prompt = (
-        "You are an expert YouTube strategist. "
-        "Format the provided raw retention analysis into a professional, compelling, "
-        "and easy-to-read forensic report using Markdown."
+        "You are the Report Synthesizer Agent (The Executive Editor). "
+        "Format the provided verified multi-agent analysis into a professional, compelling, "
+        "and easy-to-read forensic report using Markdown. Ensure formatting is perfect."
     )
     
-    user_prompt = f"Video: {video_title}\n\nAnalysis Data:\n{gemini_analysis_data}"
+    user_prompt = f"Video: {video_title}\n\nVerified Findings Data:\n{verified_findings}"
     
     completion = client.chat.completions.create(
         model="openai/gpt-oss-20b",
@@ -312,7 +310,6 @@ def generate_final_report(gemini_analysis_data: str, video_title: str):
         ],
         temperature=0.7,
         max_tokens=2048,
-        # Reasoning formats can be applied if using the 120b model
     )
     
     return completion.choices[0].message.content
@@ -397,7 +394,7 @@ WITH CHECK (true);
 | API | HTTP Code | Error Meaning | Remediation Strategy |
 |---|---|---|---|
 | YouTube Analytics | 401 | `Unauthorized` | Refresh the Google access token using the refresh token stored in the DB. |
-| YouTube Analytics | 403 | `Forbidden` (Quota Exceeded) | Halt fetch agent. Queue job for next UTC day. Notify user via UI. |
+| YouTube Analytics | 403 | `Forbidden` (Quota Exceeded) | Halt Data Ingestion Agent. Queue job for next UTC day. Notify user via UI. |
 | YouTube Data | 404 | `Not Found` | Video was deleted or made private. Remove from processing queue. |
 | Gemini Files | 400 | `File too large` / `Invalid format` | Validate file locally before upload. Ensure < 2GB and standard video format (mp4). |
 | Gemini Content | 429 | `Too Many Requests` (Rate Limit) | Implement exponential backoff. Max 15 RPM. Pause execution for 60s. |
