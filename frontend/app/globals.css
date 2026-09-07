@@ -4,47 +4,83 @@
 
 @layer base {
   :root {
-    --background: #F8F7F4;
-    --foreground: #18181B;
+    --background: #FAF8F5;
+    --foreground: #1C1917;
     --card: #FFFFFF;
-    --card-foreground: #18181B;
+    --card-foreground: #1C1917;
     --popover: #FFFFFF;
-    --popover-foreground: #18181B;
-    --primary: #4F46E5;
-    --primary-foreground: #FFFFFF;
-    --secondary: #F1EFEA;
-    --secondary-foreground: #18181B;
-    --muted: #E9E7E1;
-    --muted-foreground: #71717A;
-    --accent: #0284C7;
+    --popover-foreground: #1C1917;
+    --primary: #18181B;
+    --primary-foreground: #FAF8F5;
+    --secondary: #F3F0E8;
+    --secondary-foreground: #1C1917;
+    --muted: #EAE5DC;
+    --muted-foreground: #78716C;
+    --accent: #D95A2B;
     --accent-foreground: #FFFFFF;
-    --destructive: #EF4444;
+    --destructive: #DC2626;
     --destructive-foreground: #FFFFFF;
-    --border: rgba(0, 0, 0, 0.08);
-    --input: rgba(0, 0, 0, 0.08);
-    --ring: #4F46E5;
+    --border: rgba(28, 25, 23, 0.08);
+    --input: rgba(28, 25, 23, 0.08);
+    --ring: #D95A2B;
     --radius: 0.875rem;
   }
 
   * {
-    @apply border-black/[0.07];
+    @apply border-stone-800/[0.07];
   }
 
   body {
-    background-color: #F8F7F4;
-    color: #18181B;
+    background-color: #FAF8F5;
+    color: #1C1917;
     font-family: var(--font-inter), system-ui, sans-serif;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  /* Accessibility focus ring */
+  :focus-visible {
+    outline: 2px solid #D95A2B;
+    outline-offset: 2px;
+  }
 }
 
-/* Cozy light cards with warm micro-border & soft elevation */
+/* Site atmospheric ambient lighting */
+.site-lighting {
+  position: relative;
+}
+
+.site-lighting::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 1200px;
+  height: 600px;
+  background: radial-gradient(
+    ellipse 85% 60% at 50% 0%,
+    rgba(217, 90, 43, 0.05) 0%,
+    rgba(244, 235, 222, 0.5) 40%,
+    transparent 80%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Fine editorial paper grid matrix */
+.bg-editorial-grid {
+  background-image: radial-gradient(rgba(28, 25, 23, 0.07) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Cozy warm cards with tactile micro-border & soft elevation */
 .cozy-card {
   background: #FFFFFF;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 10px 30px -4px rgba(24, 24, 27, 0.04);
+  border: 1px solid rgba(28, 25, 23, 0.07);
+  box-shadow: 0 1px 2px 0 rgba(28, 25, 23, 0.03), 0 10px 30px -4px rgba(28, 25, 23, 0.04);
 }
 
 .cozy-card-hover {
@@ -52,15 +88,9 @@
 }
 
 .cozy-card-hover:hover {
-  border-color: rgba(79, 70, 229, 0.2);
-  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 16px 40px -6px rgba(79, 70, 229, 0.07);
+  border-color: rgba(217, 90, 43, 0.25);
+  box-shadow: 0 4px 14px -2px rgba(28, 25, 23, 0.05), 0 20px 45px -8px rgba(217, 90, 43, 0.07);
   transform: translateY(-2px);
-}
-
-/* Subtle dot-grid ambient background */
-.bg-subtle-grid {
-  background-image: radial-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px);
-  background-size: 24px 24px;
 }
 
 /* Minimal smooth scrollbars */
@@ -70,15 +100,132 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #F8F7F4;
+  background: #FAF8F5;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D4D2CD;
+  background: #D8D2C6;
   border-radius: 9999px;
-  border: 2px solid #F8F7F4;
+  border: 2px solid #FAF8F5;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #A8A6A0;
+  background: #B5AEA1;
+}
+
+/* Shimmer animation keyframes for Skeleton */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes shimmer-fast {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Orbital circular spinner keyframes */
+@keyframes orbital-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbital-spin-reverse {
+  0% {
+    transform: rotate(360deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+/* Soft breathing pulse for brand icons and status indicators */
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(0.94);
+  }
+}
+
+/* Micro-animation utilities */
+.animate-orbital {
+  animation: orbital-spin 0.85s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+.animate-orbital-reverse {
+  animation: orbital-spin-reverse 1.25s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.tactile-press {
+  transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.tactile-press:active {
+  transform: scale(0.97);
+}
+
+/* SVG path draw animation */
+@keyframes drawPath {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Parallax scroll layer utilities */
+.parallax-slow {
+  will-change: transform;
+  transition: transform 0.1s linear;
+}
+
+.parallax-fast {
+  will-change: transform;
+  transition: transform 0.1s linear;
+}
+
+/* Glow hover effect for cards & interactive elements */
+.glow-hover {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glow-hover:hover {
+  box-shadow: 0 0 24px rgba(217, 90, 43, 0.14), 0 8px 32px -4px rgba(28, 25, 23, 0.08);
+  border-color: rgba(217, 90, 43, 0.28);
+}
+
+/* 3D tilt perspective wrapper */
+.perspective-container {
+  perspective: 1200px;
+}
+
+.tilt-element {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
