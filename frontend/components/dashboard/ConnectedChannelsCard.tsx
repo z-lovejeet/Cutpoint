@@ -13,7 +13,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toaster";
-import { disconnectYouTube, restoreGuestChannel } from "@/lib/api";
+import { disconnectYouTube, restoreGuestChannel, getYouTubeAuthUrl } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import type { YouTubeChannel } from "@/types/database";
 
@@ -231,7 +231,7 @@ export function ConnectedChannelsCard({
       {/* Footer Actions */}
       <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
         <a
-          href={`http://localhost:8000/api/v1/auth/youtube${userId ? `?user_id=${userId}` : ""}`}
+          href={getYouTubeAuthUrl(userId)}
           className="w-full flex-1 inline-flex"
         >
           <Button

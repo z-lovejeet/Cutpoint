@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { toast } from "@/components/ui/Toaster";
 import { createClient } from "@/lib/supabase/client";
-import { disconnectYouTube, restoreGuestChannel } from "@/lib/api";
+import { disconnectYouTube, restoreGuestChannel, getYouTubeAuthUrl } from "@/lib/api";
 import SettingsLoading from "./loading";
 import type { Profile, YouTubeChannel } from "@/types/database";
 
@@ -529,7 +529,7 @@ export default function SettingsPage() {
               </Button>
             )}
             <a
-              href={`http://localhost:8000/api/v1/auth/youtube${userId ? `?user_id=${userId}` : ""}`}
+              href={getYouTubeAuthUrl(userId)}
               className="inline-flex w-full sm:w-auto"
             >
               <Button
