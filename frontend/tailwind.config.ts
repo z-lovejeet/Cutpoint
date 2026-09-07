@@ -6,38 +6,38 @@ const config: Config = {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
-  darkMode: ["class"],
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
         background: {
-          base: "#0A0A0F",
-          surface: "#12121A",
-          elevated: "#1A1A2E",
-          highlight: "#22223A",
+          base: "#F8F7F4", // Cozy warm linen
+          surface: "#FFFFFF",
+          elevated: "#F1EFEA",
+          subtle: "#E9E7E1",
         },
         primary: {
-          DEFAULT: "#6C63FF",
-          light: "#8F88FF",
-          dark: "#4A43D1",
-          muted: "rgba(108, 99, 255, 0.2)",
+          DEFAULT: "#4F46E5", // Elegant indigo
+          light: "#6366F1",
+          dark: "#3730A3",
+          muted: "rgba(79, 70, 229, 0.08)",
         },
         accent: {
-          DEFAULT: "#00D9FF",
-          light: "#4DF0FF",
-          dark: "#00A3CC",
-          muted: "rgba(0, 217, 255, 0.2)",
+          DEFAULT: "#0284C7", // Sky cyan
+          light: "#38BDF8",
+          dark: "#0369A1",
+          muted: "rgba(2, 132, 199, 0.08)",
         },
         text: {
-          primary: "#F5F5F7",
-          secondary: "#8888A0",
-          tertiary: "#555570",
-          disabled: "#3A3A50",
+          primary: "#18181B", // Deep slate / obsidian
+          secondary: "#52525B", // Neutral grey
+          tertiary: "#71717A", // Muted metadata
+          disabled: "#A1A1AA",
         },
-        success: "#00E676",
-        warning: "#FFB300",
-        danger: "#FF5252",
-        info: "#448AFF",
+        success: "#10B981",
+        warning: "#F59E0B",
+        danger: "#EF4444",
+        info: "#3B82F6",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
@@ -45,14 +45,15 @@ const config: Config = {
         mono: ["var(--font-jetbrains-mono)", "monospace"],
       },
       boxShadow: {
-        glass: "0 8px 32px rgba(0, 0, 0, 0.3)",
-        "glow-primary": "0 0 24px rgba(108, 99, 255, 0.35)",
-        "glow-accent": "0 0 24px rgba(0, 217, 255, 0.35)",
+        cozy: "0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 8px 24px -4px rgba(0, 0, 0, 0.04)",
+        card: "0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 12px 32px -4px rgba(24, 24, 27, 0.06)",
+        dropdown: "0 4px 20px -2px rgba(0, 0, 0, 0.08), 0 12px 40px -4px rgba(0, 0, 0, 0.12)",
+        "glow-subtle": "0 0 30px rgba(79, 70, 229, 0.12)",
       },
       animation: {
-        "fade-in": "fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
-        "slide-up": "slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
-        "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "fade-in": "fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+        "slide-up": "slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+        "pulse-subtle": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
       keyframes: {
         fadeIn: {
@@ -60,12 +61,9 @@ const config: Config = {
           "100%": { opacity: "1" },
         },
         slideUp: {
-          "0%": { transform: "translateY(24px)", opacity: "0" },
+          "0%": { transform: "translateY(16px)", opacity: "0" },
           "100%": { transform: "translateY(0)", opacity: "1" },
         },
-      },
-      backdropBlur: {
-        glass: "20px",
       },
     },
   },
