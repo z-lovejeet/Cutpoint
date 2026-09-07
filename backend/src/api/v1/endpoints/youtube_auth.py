@@ -24,7 +24,8 @@ def _build_google_auth_url(user_id: str) -> str:
     client_id = settings.GOOGLE_CLIENT_ID
     if not client_id:
         logger.warning("GOOGLE_CLIENT_ID is not configured.")
-        return "http://localhost:3000/dashboard?auth=demo_connected"
+        frontend_url = settings.FRONTEND_URL.rstrip("/")
+        return f"{frontend_url}/dashboard?auth=demo_connected"
 
     scopes = [
         "https://www.googleapis.com/auth/youtube.readonly",
@@ -134,7 +135,8 @@ async def youtube_oauth_callback(
             resp = await client.post(token_url, data=payload)
             if resp.status_code != 200:
                 logger.error("Token exchange failed (%d): %s", resp.status_code, resp.text)
-                return RedirectResponse(url="http://localhost:3000/dashboard?error=oauth_failed")
+                frontend_url = settings.FRONTEND_URL.rstrip("/")
+                return RedirectResponse(url=f"{frontend_url}/dashboard?error=oauth_failed")
 
             token_data = resp.json()
             access_token = token_data["access_token"]
@@ -171,8 +173,10 @@ async def youtube_oauth_callback(
                 except Exception as dbe:
                     logger.warning("Could not persist YouTube channel record to Supabase: %s", dbe)
 
-        return RedirectResponse(url="http://localhost:3000/dashboard?connected=true")
+        frontend_url = settings.FRONTEND_URL.rstrip("/")
+        return RedirectResponse(url=f"{frontend_url}/dashboard?connected=true")
 
     except Exception as e:
         logger.error("YouTube OAuth callback error: %s", e)
-        return RedirectResponse(url="http://localhost:3000/dashboard?error=callback_failed")
+        frontend_url = settings.FRONTEND_URL.rstrip("/")
+        return RedirectResponse(url=f"{frontend_url}/dashboard?error=callback_failed")

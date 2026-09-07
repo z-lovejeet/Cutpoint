@@ -9,8 +9,17 @@ import type {
   YouTubeAuthResponse,
 } from "@/types/database";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const API_BASE = rawApiUrl.endsWith("/api/v1")
+  ? rawApiUrl
+  : `${rawApiUrl.replace(/\/$/, "")}/api/v1`;
+
+/**
+ * Builds the YouTube OAuth initiation URL pointing to the active backend.
+ */
+export function getYouTubeAuthUrl(userId?: string): string {
+  return `${API_BASE}/auth/youtube${userId ? `?user_id=${encodeURIComponent(userId)}` : ""}`;
+}
 
 /**
  * Builds request headers with Supabase JWT bearer or Guest Evaluator header.
