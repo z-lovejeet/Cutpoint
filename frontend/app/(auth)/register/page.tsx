@@ -71,7 +71,7 @@ export default function RegisterPage() {
 
       <AuthCard
         title="Create Account"
-        subtitle="Start uncovering why viewers leave your YouTube videos"
+        subtitle="Start diagnosing your video timelines and holding viewers longer"
         footerText="Already have an account?"
         footerLinkText="Sign in"
         footerLinkHref="/sign-in"
@@ -82,11 +82,11 @@ export default function RegisterPage() {
 
           {/* Divider */}
           <div className="relative flex items-center justify-center">
-            <div className="w-full border-t border-white/10" />
-            <span className="bg-background-surface px-3 text-[11px] font-mono uppercase text-text-tertiary">
+            <div className="w-full border-t border-black/[0.08]" />
+            <span className="bg-white px-3 text-[11px] font-mono uppercase text-text-tertiary">
               Or with email
             </span>
-            <div className="w-full border-t border-white/10" />
+            <div className="w-full border-t border-black/[0.08]" />
           </div>
 
           {/* Feedback messages */}
@@ -107,7 +107,9 @@ export default function RegisterPage() {
           {/* Registration Form */}
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-mono text-text-secondary">Channel / Creator Name</label>
+              <label className="text-xs font-mono text-text-secondary font-medium">
+                Creator / Channel Name
+              </label>
               <div className="relative">
                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
                 <input
@@ -116,13 +118,15 @@ export default function RegisterPage() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Alex Rivera"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background-elevated/70 border border-white/10 text-white placeholder:text-text-disabled text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background-base/60 border border-black/[0.09] text-text-primary placeholder:text-text-disabled text-sm focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 transition-all"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-mono text-text-secondary">Email Address</label>
+              <label className="text-xs font-mono text-text-secondary font-medium">
+                Email Address
+              </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
                 <input
@@ -131,13 +135,15 @@ export default function RegisterPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="creator@youtube.com"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background-elevated/70 border border-white/10 text-white placeholder:text-text-disabled text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background-base/60 border border-black/[0.09] text-text-primary placeholder:text-text-disabled text-sm focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 transition-all"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-mono text-text-secondary">Password</label>
+              <label className="text-xs font-mono text-text-secondary font-medium">
+                Password
+              </label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
                 <input
@@ -146,7 +152,7 @@ export default function RegisterPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Minimum 6 characters"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background-elevated/70 border border-white/10 text-white placeholder:text-text-disabled text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background-base/60 border border-black/[0.09] text-text-primary placeholder:text-text-disabled text-sm focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 transition-all"
                 />
               </div>
             </div>
@@ -154,9 +160,9 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-primary hover:bg-primary-light text-white text-sm font-medium shadow-glow-primary transition-all duration-200 active:scale-[0.98] disabled:opacity-50"
+              className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-primary hover:bg-primary-light text-white text-sm font-medium shadow-sm transition-all duration-200 active:scale-[0.99] disabled:opacity-60"
             >
-              <span>{isLoading ? "Creating Account..." : "Create Account"}</span>
+              <span>{isLoading ? "Creating Account..." : "Create Free Account"}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>

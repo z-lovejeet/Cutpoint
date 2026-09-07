@@ -57,7 +57,7 @@ function SignInContent() {
 
       <AuthCard
         title="Welcome Back"
-        subtitle="Sign in to access your YouTube retention intelligence"
+        subtitle="Sign in to your studio to analyze your viewer retention drops"
         footerText="Don't have a Cutpoint account?"
         footerLinkText="Create one here"
         footerLinkHref="/register"
@@ -68,11 +68,11 @@ function SignInContent() {
 
           {/* Divider */}
           <div className="relative flex items-center justify-center">
-            <div className="w-full border-t border-white/10" />
-            <span className="bg-background-surface px-3 text-[11px] font-mono uppercase text-text-tertiary">
+            <div className="w-full border-t border-black/[0.08]" />
+            <span className="bg-white px-3 text-[11px] font-mono uppercase text-text-tertiary">
               Or with email
             </span>
-            <div className="w-full border-t border-white/10" />
+            <div className="w-full border-t border-black/[0.08]" />
           </div>
 
           {/* Error Banner */}
@@ -86,7 +86,9 @@ function SignInContent() {
           {/* Email Password Form */}
           <form onSubmit={handleEmailSignIn} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-mono text-text-secondary">Email Address</label>
+              <label className="text-xs font-mono text-text-secondary font-medium">
+                Email Address
+              </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
                 <input
@@ -95,14 +97,16 @@ function SignInContent() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="creator@youtube.com"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background-elevated/70 border border-white/10 text-white placeholder:text-text-disabled text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background-base/60 border border-black/[0.09] text-text-primary placeholder:text-text-disabled text-sm focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 transition-all"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-mono text-text-secondary">Password</label>
+                <label className="text-xs font-mono text-text-secondary font-medium">
+                  Password
+                </label>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
@@ -112,7 +116,7 @@ function SignInContent() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background-elevated/70 border border-white/10 text-white placeholder:text-text-disabled text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background-base/60 border border-black/[0.09] text-text-primary placeholder:text-text-disabled text-sm focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 transition-all"
                 />
               </div>
             </div>
@@ -120,9 +124,9 @@ function SignInContent() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-primary hover:bg-primary-light text-white text-sm font-medium shadow-glow-primary transition-all duration-200 active:scale-[0.98] disabled:opacity-50"
+              className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-primary hover:bg-primary-light text-white text-sm font-medium shadow-sm transition-all duration-200 active:scale-[0.99] disabled:opacity-60"
             >
-              <span>{isLoading ? "Authenticating..." : "Sign In"}</span>
+              <span>{isLoading ? "Authenticating..." : "Sign In to Studio"}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
