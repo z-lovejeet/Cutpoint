@@ -11,49 +11,56 @@ const config: Config = {
     extend: {
       colors: {
         background: {
-          base: "#F8F7F4", // Cozy warm linen
-          surface: "#FFFFFF",
-          elevated: "#F1EFEA",
-          subtle: "#E9E7E1",
+          base: "#FAF8F5", // Warm ivory parchment
+          surface: "#FFFFFF", // Crisp porcelain white
+          elevated: "#F3F0E8", // Warm bone/sand
+          subtle: "#EAE5DC", // Warm stone
         },
         primary: {
-          DEFAULT: "#4F46E5", // Elegant indigo
-          light: "#6366F1",
-          dark: "#3730A3",
-          muted: "rgba(79, 70, 229, 0.08)",
+          DEFAULT: "#18181B", // Deep obsidian noir
+          light: "#27272A",
+          dark: "#09090B",
+          muted: "rgba(24, 24, 27, 0.06)",
         },
         accent: {
-          DEFAULT: "#0284C7", // Sky cyan
-          light: "#38BDF8",
-          dark: "#0369A1",
-          muted: "rgba(2, 132, 199, 0.08)",
+          DEFAULT: "#D95A2B", // Warm terracotta rust
+          light: "#E86F42",
+          dark: "#B8461B",
+          muted: "rgba(217, 90, 43, 0.08)",
+        },
+        amber: {
+          DEFAULT: "#D48828", // Editorial warm amber gold
+          light: "#E49C3C",
+          dark: "#B36F1C",
+          muted: "rgba(212, 136, 40, 0.08)",
         },
         text: {
-          primary: "#18181B", // Deep slate / obsidian
-          secondary: "#52525B", // Neutral grey
-          tertiary: "#71717A", // Muted metadata
-          disabled: "#A1A1AA",
+          primary: "#1C1917", // Warm stone obsidian
+          secondary: "#57534E", // Editorial warm grey
+          tertiary: "#78716C", // Muted taupe metadata
+          disabled: "#A8A29E",
         },
-        success: "#10B981",
-        warning: "#F59E0B",
-        danger: "#EF4444",
-        info: "#3B82F6",
+        success: "#2D7A58", // Editorial sage green
+        warning: "#D97706",
+        danger: "#DC2626",
+        info: "#2563EB",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
-        heading: ["var(--font-space-grotesk)", "sans-serif"],
+        heading: ["var(--font-space-grotesk)", "system-ui", "sans-serif"],
         mono: ["var(--font-jetbrains-mono)", "monospace"],
       },
       boxShadow: {
-        cozy: "0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 8px 24px -4px rgba(0, 0, 0, 0.04)",
-        card: "0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 12px 32px -4px rgba(24, 24, 27, 0.06)",
-        dropdown: "0 4px 20px -2px rgba(0, 0, 0, 0.08), 0 12px 40px -4px rgba(0, 0, 0, 0.12)",
-        "glow-subtle": "0 0 30px rgba(79, 70, 229, 0.12)",
+        cozy: "0 1px 2px 0 rgba(28, 25, 23, 0.04), 0 8px 24px -4px rgba(28, 25, 23, 0.04)",
+        card: "0 1px 3px 0 rgba(28, 25, 23, 0.04), 0 16px 36px -6px rgba(28, 25, 23, 0.06)",
+        dropdown: "0 4px 20px -2px rgba(28, 25, 23, 0.08), 0 16px 40px -4px rgba(28, 25, 23, 0.12)",
+        "glow-subtle": "0 0 35px rgba(217, 90, 43, 0.12)",
+        "glow-primary": "0 0 30px rgba(24, 24, 27, 0.12)",
       },
       animation: {
         "fade-in": "fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
         "slide-up": "slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
-        "pulse-subtle": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "pulse-subtle": "pulse 5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
       keyframes: {
         fadeIn: {
