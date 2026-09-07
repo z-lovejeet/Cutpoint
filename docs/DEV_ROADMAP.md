@@ -143,7 +143,7 @@ This phase constructs the public-facing marketing pages designed to attract user
   - **Features Showcase:** Bento-box grid layout highlighting Multimodal AI, Math-based cliff detection, and Chat interactions.
   - **Bottom CTA:** Final push to sign up.
 - **About Page (`/about`):**
-  - Detailed explanation of the 5-agent pipeline.
+  - Detailed explanation of the 8-agent pipeline.
   - Tech stack showcase with interactive hover states on logos.
 - **Responsive Polish:**
   - Ensure 3D canvas degrades gracefully on low-power devices.
@@ -165,37 +165,34 @@ This phase constructs the public-facing marketing pages designed to attract user
 
 ## Phase 5: Backend Agents — Core Pipeline
 
-This is the most critical backend phase, implementing the core AI and data processing logic using parallel execution.
+This is the most critical backend phase, implementing the core AI and data processing logic using parallel execution and genuine multi-agent orchestration.
 
 ### Detailed Task List
 - **Data Models (Pydantic):**
-  - Implement `VideoMetadata`, `RetentionDataPoint`, `CliffPoint`, `AgentResponse`, `ForensicReport` schemas.
-- **Agent 1: Data Fetcher:**
-  - Implement YouTube Data API client to fetch video metadata (title, duration, thumbnails).
-  - Implement YouTube Analytics API client to retrieve `audienceWatchRatio` time-series data.
-  - Handle OAuth token refresh logic.
-- **Agent 2: Cliff Detector (Math):**
-  - Process time-series data using NumPy.
-  - Calculate first derivative to find the rate of change.
-  - Apply thresholding and SciPy peak detection to identify the sharpest negative gradients (cliffs).
-  - Categorize cliffs by severity (High, Medium, Low).
-- **Agent 3: Video Analyzer (Gemini 3.8 Flash):**
-  - Implement Gemini Files API upload process.
-  - Build polling loop to wait for file processing completion (`ACTIVE` state).
-  - Construct detailed prompts injecting the specific cliff timestamps identified by Agent 2.
-  - Parse Gemini's multimodal response (visual + audio context at the exact moments of drop-off).
-- **Agent 4: Report Generator (Groq GPT-OSS 20B):**
-  - Aggregate outputs from Agent 1 (metadata), Agent 2 (math data), and Agent 3 (multimodal context).
-  - Construct structured prompt for GPT-OSS 20B to generate a comprehensive markdown report.
-  - Enforce JSON or highly structured markdown output.
-- **Orchestrator System:**
-  - Implement `PipelineOrchestrator` class.
-  - Phase A: Run Agent 1 and Gemini Upload (Agent 3 part 1) concurrently using `asyncio.gather`.
-  - Phase B: Run Agent 2, then execute Gemini generation (Agent 3 part 2).
-  - Phase C: Run Agent 4.
-  - Implement comprehensive error handling and logging at each step.
+  - Implement `VideoMetadata`, `RetentionDataPoint`, `CliffPoint`, `AgentResponse`, `ForensicReport`, `AnalysisState` schemas.
+- **Agent 1: Supervisor Agent (Lead Investigator - Groq 120B):**
+  - Implement dynamic orchestration and `InvestigationPlan` generation.
+  - Implement function calling to dispatch other agents and resolve conflicts.
+- **Agent 2: Data Ingestion Agent (The Archivist - API):**
+  - Implement YouTube Data/Analytics API clients.
+  - Add autonomous retry, rate limit handling, and data quality checks.
+- **Agent 3: Cliff Detector Agent (The Mathematician - NumPy/SciPy):**
+  - Calculate first derivative for sharp negative gradients.
+  - Implement adaptive thresholding and multi-algorithm ensemble for robust detection.
+- **Agent 4: Multimodal Forensic Agent (The Visual Detective - Gemini 3.8 Flash):**
+  - Implement Gemini tool use (`inspect_keyframes`, `measure_visual_stagnancy`, etc.).
+  - Build perception-action-reflection loops for visual hypothesis testing.
+- **Agent 5: Audio & Cadence Agent (The Sound Engineer - Gemini 3.8 Flash):**
+  - Implement audio tool use (`analyze_speech_cadence`, `detect_dead_air`, etc.).
+  - Analyze speech patterns and sentiment correlating with cliffs.
+- **Agent 6: Retention Critic Agent (The Skeptic - Groq 120B):**
+  - Implement adversarial debate loop to challenge Forensic and Audio agent findings.
+  - Force re-investigation loops if confidence scores are below threshold.
+- **Agent 7: Report Synthesizer Agent (The Executive Editor - Groq 20B):**
+  - Compile verified findings into a structured Forensic Retention Report.
+  - Implement iterative refinement and coherence checking.
 - **LLM Router:**
-  - Implement logic to handle Groq API rate limits (fallback to `groq/compound-mini` if `gpt-oss-20b` fails).
+  - Implement logic to handle Groq API rate limits (fallback mechanisms).
 
 ### Dependencies
 - Phase 1 (Project Foundation)
@@ -224,7 +221,7 @@ This phase connects the frontend to the backend pipeline and database through se
   - `GET /api/analyze/{id}/status`: Polls Supabase for the current status of an analysis job.
   - `GET /api/reports`: Lists completed analysis reports for the user.
   - `GET /api/reports/{id}`: Retrieves full details of a specific report.
-  - `POST /api/chat`: Receives chat messages, processes them through Agent 5, returns AI response.
+  - `POST /api/chat`: Receives chat messages, processes them through Agent 8 (Strategist Chat Agent), returns AI response.
 - **Security & Middleware:**
   - Implement FastAPI dependency to verify Supabase JWT token from `Authorization` header.
   - Inject authenticated user context into route handlers.
@@ -283,13 +280,14 @@ This phase builds the core user interface for managing videos and viewing the ge
 
 ---
 
-## Phase 8: Chat Agent & Popup
+## Phase 8: Strategist Chat Agent & Popup
 
 This phase implements the interactive Q&A capability, allowing users to converse with the Groq 120B model about their specific report.
 
 ### Detailed Task List
-- **Backend (Agent 5 - Chat Agent):**
+- **Backend (Agent 8 - Strategist Chat Agent):**
   - Build integration with Groq API using the `gpt-oss-120b` model.
+  - Implement function calling tools to re-query specific data points, pull up frame analysis, and reference specific sections of the report.
   - Implement context injection: Pre-pend the entire `ForensicReport` data as system context.
   - Manage conversation history within the request payload.
   - Save messages to Supabase `chat_messages` table.
@@ -357,8 +355,9 @@ This phase ensures the reliability and accuracy of the entire system before subm
 ### Detailed Task List
 - **End-to-End Flow Testing:**
   - Execute the complete user journey: Sign Up -> Connect YouTube -> Select Video -> Wait for Analysis -> View Report -> Chat with AI.
-- **Agent Validation:**
-  - Validate the quality of Gemini 3.8 Flash explanations against known video drops.
+- **Agent & Multi-Agent System Validation:**
+  - Conduct integration testing of the multi-agent debate system (ensure Critic properly rejects weak hypotheses from Forensic/Audio agents).
+  - Validate the quality of Gemini 3.8 Flash tool usage and explanations against known video drops.
   - Tune prompts for both Gemini and Groq if outputs are hallucinated or poorly formatted.
 - **Error Handling Scenarios:**
   - Test behavior when YouTube API quotas are exceeded.

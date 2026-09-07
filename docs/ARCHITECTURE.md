@@ -11,7 +11,7 @@ The architecture is divided into three primary tiers:
 - **Backend (API/Orchestration):** Python FastAPI deployed on Railway/Render. Acts as the control plane for the multi-agent system, managing async communication with external APIs and orchestrating the forensic pipeline.
 - **Data & Auth (Persistence):** Supabase (PostgreSQL + GoTrue Auth). Manages user identities, stores analysis metadata, caching, and enforces Row-Level Security (RLS).
 
-The system uses an event-driven, parallel execution model leveraging Python's `asyncio` to coordinate five specialized agents (Data Fetcher, Cliff Detector, Video Analyzer, Report Generator, Chat Agent).
+The system uses an event-driven, parallel execution model leveraging Python's `asyncio` to coordinate 8 specialized, autonomous agents. Unlike static pipelines, these agents utilize dynamic tool calling, perception-action-reflection loops, and adversarial debate via a Supervisor Agent to conduct robust forensic investigations.
 
 ## 2. System Diagram
 
@@ -48,19 +48,23 @@ The system uses an event-driven, parallel execution model leveraging Python's `a
             |                           |                          |
             v                           v                          v
 +---------------------------------------+-------+      +-------------------+
-|                                               |      |                   |
-|           Supabase PostgreSQL DB              |      | Multi-Agent Core  |
-|           (RLS Policies Enforced)             |      | (asyncio gather)  |
-|                                               |      |                   |
-+-----------------------------------------------+      +---------+---------+
+|                                               |      | Multi-Agent Core  |
+|           Supabase PostgreSQL DB              |      | (8 Agents, Tool   |
+|           (RLS Policies Enforced)             |      | Calling, asyncio) |
+|                                               |      +---------+---------+
++-----------------------------------------------+                |
+                                                                 v
+                                                       +-------------------+
+                                                       | Supervisor Agent  |
+                                                       +---------+---------+
                                                                  |
                                  +-------------------------------+-------------------------------+
                                  |                               |                               |
                                  v                               v                               v
                      +-----------------------+       +-----------------------+       +-----------------------+
                      |                       |       |                       |       |                       |
-                     |  YouTube API (v3)     |       |  Gemini Files API /   |       |  Groq API             |
-                     |  & Analytics API      |       |  Vertex AI (3.8 Flash)|       |  (GPT-OSS 20B / 120B) |
+                     |  YouTube API (v3)     |       |  Gemini 3.8 Flash     |       |  Groq API             |
+                     |  & Analytics API      |       |  (Forensic & Audio)   |       |  (GPT-OSS 20B/120B)   |
                      |                       |       |                       |       |                       |
                      +-----------------------+       +-----------------------+       +-----------------------+
 ```
@@ -116,36 +120,46 @@ The backend is written in Python using FastAPI, designed to orchestrate the comp
 ### 4.2 Application Layers
 1. **API Router Layer (`/routers`):** Handles incoming HTTP requests, dependency injection (authentication verification), and response formatting.
 2. **Service Layer (`/services`):** Contains business logic for interacting with Supabase, YouTube, Gemini, and Groq.
-3. **Agent Orchestrator (`/agents`):** The core engine. Defines the five specific agents and the DAG (Directed Acyclic Graph) of their execution.
+3. **Agent Orchestrator (`/agents`):** The core engine. Defines the 8 specific agents and manages the dynamic orchestration and debate loops through the Supervisor Agent.
 
 ### 4.3 The Agent Orchestrator
-The orchestrator manages the state of an analysis job. It uses `asyncio.gather()` to run independent tasks simultaneously.
+The orchestrator manages the state of an analysis job using a shared `AnalysisState`. It uses the Supervisor Agent to dynamically direct the workflow based on intermediate findings.
 
 ```python
 # pseudo-code for orchestrator
 async def run_analysis_pipeline(video_id: str, user_id: str):
-    # Phase 1: Parallel API fetching and Video Upload
+    state = AnalysisState(video_id=video_id)
+    
+    # Phase 1 & 2: Ingestion and Math Processing
     youtube_data, video_uri = await asyncio.gather(
-        fetch_youtube_data_agent(video_id),
-        upload_video_to_gemini_agent(video_id)
+        data_ingestion_agent.fetch(video_id),
+        upload_video(video_id)
     )
+    state.cliffs = await cliff_detector_agent.detect(youtube_data)
     
-    # Phase 2: Parallel Cliff Detection and Initial AI Processing
-    cliffs, gemini_context = await asyncio.gather(
-        detect_cliffs_agent(youtube_data),
-        wait_for_gemini_processing(video_uri)
-    )
+    # Phase 3 & 4: Fan-out Investigation and Debate Loop
+    # Supervisor plans and dispatches Forensic and Audio agents
+    investigation_plan = await supervisor_agent.plan_investigation(state.cliffs)
     
-    # Phase 3: Gemini Multimodal Analysis + Groq Report Generation
-    raw_analysis = await analyze_video_agent(video_uri, cliffs)
-    final_report = await generate_report_agent(raw_analysis, youtube_data)
+    while not all_cliffs_verified(state.cliffs):
+        # Parallel multimodal and audio analysis
+        await asyncio.gather(
+            forensic_agent.investigate(state, investigation_plan),
+            audio_cadence_agent.analyze(state, investigation_plan)
+        )
+        
+        # Critic debate loop
+        await retention_critic_agent.evaluate(state)
+        await supervisor_agent.resolve_conflicts(state)
     
+    # Phase 5: Synthesis
+    final_report = await report_synthesizer_agent.generate(state)
     return final_report
 ```
 
 ## 5. Multi-Agent Pipeline
 
-The pipeline is designed to minimize overall latency by parallelizing steps that do not have direct dependencies.
+The pipeline is designed to minimize overall latency by parallelizing steps that do not have direct dependencies, while allowing for complex autonomous loops during investigation.
 
 ### 5.1 Pipeline Flow Diagram
 
@@ -155,50 +169,62 @@ Time (s) | Activity
   0.0    | [User Submits Video Analysis Request]
          | 
   0.1    | +--------------------------------+  +----------------------------------+
-         | | AGENT 1: Data Fetcher          |  | AGENT 3 (Part A): Video Prep     |
+         | | Data Ingestion Agent           |  | Video Prep Process               |
          | | - Calls YouTube Data API       |  | - Downloads/Streams video        |
-         | | - Calls YT Analytics API       |  | - Uploads to Gemini Files API    |
+         | | - Calls YT Analytics API       |  | - Extracts audio track           |
          | +--------------------------------+  +----------------------------------+
   2.5    |               |                                      |
          |               v                                      v
   2.6    | +--------------------------------+  +----------------------------------+
-         | | AGENT 2: Cliff Detector        |  | AGENT 3 (Part B): Wait State     |
-         | | - Calculates 1st derivative    |  | - Polls Gemini API for state     |
-         | | - Identifies steepest drops    |  |   transition to 'ACTIVE'         |
+         | | Cliff Detector Agent           |  | Wait State                       |
+         | | - Multi-algo ensemble          |  | - Prepares multimodal context    |
+         | | - Identifies steepest drops    |  |                                  |
          | +--------------------------------+  +----------------------------------+
   3.0    |               |                                      |
          |               +------------------+-------------------+
          |                                  |
   3.1    |                                  v
          | +----------------------------------------------------------------------+
-         | | AGENT 3 (Part C): Video Analyzer (Gemini 3.8 Flash)                  |
-         | | - Prompts model with video URI and Agent 2's cliff timestamps.       |
-         | | - Performs forensic visual/audio analysis of drop-off points.        |
+         | | Supervisor Agent (Groq GPT-OSS 120B)                                 |
+         | | - Dispatches Forensic & Audio agents based on identified cliffs.     |
          | +----------------------------------------------------------------------+
-  10.0   |                                  |
-         |                                  v
-  10.1   | +----------------------------------------------------------------------+
-         | | AGENT 4: Report Generator (Groq GPT-OSS 20B)                         |
-         | | - Ingests raw Gemini output + statistical context.                   |
+         |                                  |
+  3.5    | +--------------------------------+-------------------------------------+
+         | | Multimodal Forensic Agent      |  Audio & Cadence Agent              |
+         | | (Gemini 3.8 Flash)             |  (Gemini 3.8 Flash)                 |
+         | | - inspect_keyframes            |  - analyze_speech_cadence           |
+         | | - measure_visual_stagnancy     |  - detect_dead_air                  |
+         | +--------------------------------+-------------------------------------+
+         |                                  |
+  7.0    | +----------------------------------------------------------------------+
+         | | Retention Critic Agent (Groq GPT-OSS 120B)                           |
+         | | - Evaluates findings. If confidence < 0.8, triggers Re-Investigation |
+         | +----------------------------------------------------------------------+
+         |                                  | (Debate Loop: potentially returns to 3.5)
+ 10.1    | +----------------------------------------------------------------------+
+         | | Report Synthesizer Agent (Groq GPT-OSS 20B)                          |
+         | | - Ingests verified findings + statistical context.                   |
          | | - Formats structured forensic report (JSON) + markdown summary.      |
          | +----------------------------------------------------------------------+
-  12.0   | [Report Saved to DB -> Returned to User]
+ 12.0    | [Report Saved to DB -> Returned to User]
          |
   ...    | [User views report and initiates chat]
          |
   N      | +----------------------------------------------------------------------+
-         | | AGENT 5: Chat Agent (Groq GPT-OSS 120B)                              |
-         | | - Maintains conversation context.                                    |
-         | | - Answers follow-up queries using the final report as grounding data.|
+         | | Strategist Chat Agent (Groq GPT-OSS 120B)                            |
+         | | - Maintains conversation context and executes follow-up tools.       |
          | +----------------------------------------------------------------------+
 ```
 
 ### 5.2 Agent Profiles
-1. **Data Fetcher (Non-LLM):** Pure Python script handling API pagination, OAuth token injection, and JSON parsing.
-2. **Cliff Detector (Non-LLM):** Applies `numpy.gradient` to the `audienceWatchRatio` array, filters anomalies, and clusters closely packed drops.
-3. **Video Analyzer (Gemini 3.8 Flash):** Multimodal powerhouse. Required prompt format explicitly instructs looking at specific MM:SS timestamps.
-4. **Report Generator (Groq GPT-OSS 20B):** Optimized for structured output. Extremely fast token generation. Outputs predictable JSON matching the frontend's expected interface.
-5. **Chat Agent (Groq GPT-OSS 120B):** Optimized for complex reasoning and nuance. Explains the "why" behind the data.
+1. **Supervisor Agent (Groq GPT-OSS 120B):** Lead Investigator. Plans investigation strategy, dispatches specialists, resolves conflicts, determines confidence.
+2. **Data Ingestion Agent (Non-LLM):** The Archivist. Pure API with self-healing behaviors, handling autonomous retry and anomaly flagging.
+3. **Cliff Detector Agent (Non-LLM):** The Mathematician. Uses NumPy/SciPy for multi-algorithm ensemble anomaly detection with self-tuning sensitivity.
+4. **Multimodal Forensic Agent (Gemini 3.8 Flash):** The Visual Detective. Investigates visuals dynamically using tools like `inspect_keyframes` and `measure_visual_stagnancy`.
+5. **Audio & Cadence Agent (Gemini 3.8 Flash):** The Sound Engineer. Analyzes speech patterns, dead air, audio energy, and transcript sentiment using tools like `detect_dead_air` and `analyze_speech_cadence`.
+6. **Retention Critic Agent (Groq GPT-OSS 120B):** The Skeptic. Challenges hypotheses, scores evidence strength, and forces re-investigation loops.
+7. **Report Synthesizer Agent (Groq GPT-OSS 20B):** The Executive Editor. Compiles verified findings into a polished Forensic Retention Report with iterative refinement.
+8. **Strategist Chat Agent (Groq GPT-OSS 120B):** The Studio Advisor. Handles interactive Q&A with function calling tools to re-query specific data or report sections.
 
 ## 6. Database Architecture
 
@@ -303,7 +329,7 @@ Starts a new analysis job.
 
 ### `GET /api/v1/analyses/{analysis_id}/status`
 Polls for job status.
-- **Response:** `{ "status": "analyzing", "progress": 65, "current_step": "Gemini Multimodal Analysis" }`
+- **Response:** `{ "status": "analyzing", "progress": 65, "current_step": "Supervisor routing investigation to Forensic and Audio agents" }`
 
 ### `GET /api/v1/reports/{report_id}`
 Fetches completed report.
@@ -340,7 +366,7 @@ Sends a message to the Chat Agent.
 Resilience is critical due to reliance on multiple third-party APIs.
 
 - **API Retries:** Using `tenacity` in Python. Network calls to YouTube and Groq have automatic exponential backoff (max 3 retries) for 429 (Rate Limit) and 5xx errors.
-- **Agent Failure Recovery:** If the Gemini Video Analyzer fails (e.g., video format unsupported), the Orchestrator catches the exception, marks the analysis as `failed`, and logs the precise error to the DB. The frontend displays a user-friendly error state rather than hanging.
+- **Agent Failure Recovery:** Agents feature self-correction loops. For instance, if the Data Ingestion Agent encounters an error, it autonomously retries or alters its strategy. If a tool fails for the Forensic or Audio agents, the Supervisor logs the error, attempts a fallback tool, or alerts the Critic Agent to proceed with lowered confidence. If the overall investigation fails, the Supervisor marks the job as `failed` and logs the trace to the DB.
 - **Fallback Models:** If `gpt-oss-120b` is overloaded during chat, the backend falls back to `groq-compound-mini`.
 - **Global Error Boundaries:** React Error Boundaries wrap Next.js layouts to catch client-side rendering crashes (especially useful for 3D R3F context losses).
 
