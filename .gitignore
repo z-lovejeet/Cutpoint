@@ -70,3 +70,8 @@ pnpm-debug.log*
 
 # Docker
 *.tar
+
+# Agent usage stats
+.*_usage.json
+*.usage.json
+
