@@ -158,7 +158,7 @@ dev-dependencies = [
 
 ## Step 3: Google Cloud Console Setup
 
-To interact with YouTube data, you must configure a Google Cloud Project and obtain OAuth 2.0 credentials.
+To interact with YouTube data via the **Data Ingestion Agent**, you must configure a Google Cloud Project and obtain OAuth 2.0 credentials.
 
 1.  **Create Project**: Go to the [Google Cloud Console](https://console.cloud.google.com/). Click the project dropdown in the top bar and select "New Project". Name it `Cutpoint-Dev`.
 2.  **Enable APIs**:
@@ -194,7 +194,7 @@ To interact with YouTube data, you must configure a Google Cloud Project and obt
 
 ## Step 4: Google AI Studio / Vertex AI Setup
 
-Cutpoint uses Gemini 3.8 Flash for multimodal video analysis. You can use either Google AI Studio (simpler) or Vertex AI (enterprise).
+Cutpoint uses Gemini 3.8 Flash for multimodal video and audio analysis. This API is used by both the **Multimodal Forensic Agent** and the **Audio & Cadence Agent**. You can use either Google AI Studio (simpler) or Vertex AI (enterprise).
 
 ### Option A: Google AI Studio (Recommended for Dev)
 
@@ -219,7 +219,7 @@ Cutpoint uses Gemini 3.8 Flash for multimodal video analysis. You can use either
 
 ## Step 5: Groq API Setup
 
-Groq provides extremely low-latency inference for open-source models, which we use for report generation and the chat agent.
+Groq provides extremely low-latency inference for open-source models. It powers several key agents in our 8-agent architecture: the **Supervisor Agent**, **Report Synthesizer Agent**, and **Strategist Chat Agent**. Importantly, it also powers the **Retention Critic Agent** (The Skeptic), which heavily utilizes Groq's GPT-OSS 120B model for deep reasoning, adversarial questioning, and multi-agent debate.
 
 1.  Navigate to the [Groq Console](https://console.groq.com/).
 2.  Log in or create a free account.
@@ -288,12 +288,14 @@ GOOGLE_CLOUD_PROJECT="cutpoint-dev"
 # ------------------------------------------------------------------------------
 # AI Models Configuration
 # ------------------------------------------------------------------------------
+# Used by the Multimodal Forensic Agent and Audio & Cadence Agent
 # Set this if using Google AI Studio
 GEMINI_API_KEY="your-gemini-api-key"
 
 # Set this if using Vertex AI (requires service account JSON file path)
 # GOOGLE_APPLICATION_CREDENTIALS="/absolute/path/to/vertex-sa-key.json"
 
+# Used by Supervisor, Retention Critic, Report Synthesizer, and Strategist Chat agents
 GROQ_API_KEY="gsk_your-groq-api-key"
 
 # ------------------------------------------------------------------------------

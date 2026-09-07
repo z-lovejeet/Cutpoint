@@ -20,13 +20,22 @@ A mid-sized creator uploads 4 videos a month. For each video, they might spend 2
 ## 3. Solution Overview
 Cutpoint automates the entire process of retention analysis, transforming raw data into actionable intelligence.
 
+**Technical Innovation: Genuine Autonomous Agents**
+Unlike simple linear AI pipelines ("agent-washing"), Cutpoint utilizes a robust 8-agent architecture featuring true autonomous behaviors. Our system implements:
+- **Genuine Autonomous Agents:** Dynamic tool calling and decision-making instead of static API wrappers.
+- **Perception-Action-Reflection Loops:** Agents investigate, evaluate data, and self-correct if evidence is inconclusive.
+- **Adversarial Verification:** A built-in Critic Agent continuously debates and challenges findings to ensure accuracy.
+- **Multi-step Investigation:** Agents orchestrate complex, multi-tool investigations rather than relying on single prompts.
+
 **End-to-End Workflow:**
 1. **Onboarding & Connection:** The user logs in via Supabase Auth and authenticates their YouTube channel using OAuth 2.0.
-2. **Data Ingestion:** The platform fetches the user's latest videos and pulls the `audienceWatchRatio` (retention curve) data using the YouTube Analytics API.
-3. **Cliff Detection:** A custom Python backend algorithm (utilizing NumPy/SciPy for first derivative calculation) analyzes the retention curve to identify "cliffs"—statistically significant, steep drops in audience retention within short time windows.
-4. **Multimodal Analysis:** The original video file is uploaded to the Gemini Files API. Gemini 3.8 Flash is prompted to specifically analyze the visual, audio, and narrative content at the exact timestamps where the cliffs occurred.
-5. **Report Generation:** Using a specialized structured output model (Groq GPT-OSS 20B), the platform generates a comprehensive "Forensic Report" that details the suspected root cause for each drop-off and provides prescriptive editing recommendations for future videos.
-6. **Interactive Follow-up:** The user can interact with a Chat Agent (powered by Groq GPT-OSS 120B) that has full context of the report and the video, allowing for deep-dive Q&A (e.g., "How should I have transitioned that B-roll instead?").
+2. **Data Ingestion:** The **Data Ingestion Agent** autonomously fetches the `audienceWatchRatio` data, validating and self-healing against rate limits.
+3. **Cliff Detection:** The **Cliff Detector Agent** (utilizing NumPy/SciPy) applies mathematical models to identify "cliffs"—statistically significant, steep drops in audience retention.
+4. **Investigation Planning:** The **Supervisor Agent** reviews the cliffs and dynamically plans the investigation strategy.
+5. **Multimodal Analysis:** The **Multimodal Forensic Agent** and **Audio & Cadence Agent** investigate the cliffs in parallel. They utilize dynamic function calling (e.g., `inspect_keyframes`, `analyze_speech_cadence`) to test visual and audio hypotheses.
+6. **Adversarial Verification:** The **Retention Critic Agent** reviews the hypotheses, challenging weak evidence and forcing re-investigation via debate loops if confidence is low.
+7. **Report Synthesis:** Once verified, the **Report Synthesizer Agent** compiles the findings into a polished, structured "Forensic Report" with prescriptions.
+8. **Interactive Follow-up:** The user can interact with the **Strategist Chat Agent** (powered by Groq GPT-OSS 120B) for deep-dive Q&A, backed by dynamic context retrieval tools.
 
 ## 4. Target Audience
 **Primary Persona: The Solo Mid-Size Creator**
@@ -60,11 +69,12 @@ Cutpoint automates the entire process of retention analysis, transforming raw da
 - **Authentication System:** Supabase Auth integrating Google OAuth and standard Email/Password login. Protected routes requiring active sessions.
 - **YouTube OAuth Integration:** Dedicated flow to request read-only access to YouTube Analytics and Data API v3 on behalf of the user.
 - **Dashboard:** A clean UI displaying a list of the user's recent videos fetched via the YouTube Data API, complete with thumbnails and basic stats.
-- **Automated Data Fetching:** Backend service (Agent 1) that pulls the `audienceWatchRatio` array for a selected video from the YouTube Analytics API.
-- **Cliff Detection Algorithm:** Mathematical module (Agent 2) using NumPy/SciPy to calculate the first derivative of the retention curve and identify local minima (cliffs).
-- **Video Analysis Pipeline:** Integration with Gemini Files API to upload the video, and Gemini 3.8 Flash to analyze the specific cliff timestamps (Agent 3).
-- **Forensic Report Generation:** LLM-powered generation (Agent 4 using Groq GPT-OSS 20B) of structured markdown reports containing root cause analysis and prescriptive recommendations.
-- **AI Chat Popup:** A persistent or floating chat interface on the report page (Agent 5 using Groq GPT-OSS 120B) for follow-up Q&A, seeded with the context of the generated report.
+- **Automated Data Fetching:** **Data Ingestion Agent** that autonomously pulls and validates the `audienceWatchRatio` array from the YouTube Analytics API.
+- **Cliff Detection Algorithm:** **Cliff Detector Agent** using NumPy/SciPy to calculate the first derivative of the retention curve and identify local minima (cliffs).
+- **Video Analysis Pipeline:** The **Supervisor Agent** orchestrates the **Multimodal Forensic Agent** (Gemini 3.8 Flash, visual analysis) and **Audio & Cadence Agent** to run multi-tool parallel investigations on cliff timestamps.
+- **Adversarial Debate:** The **Retention Critic Agent** evaluates and challenges findings before they are finalized.
+- **Forensic Report Generation:** The **Report Synthesizer Agent** (Groq GPT-OSS 20B) generates structured markdown reports containing root cause analysis and prescriptive recommendations.
+- **AI Chat Popup:** A persistent chat interface on the report page driven by the **Strategist Chat Agent** (Groq GPT-OSS 120B) for interactive, tool-assisted follow-up Q&A.
 - **Analysis History:** Database storage in Supabase PostgreSQL of past reports, allowing users to revisit previous analyses.
 - **Responsive 3D UI:** Award-winning aesthetic using React Three Fiber, GSAP, and Tailwind CSS.
 
@@ -82,7 +92,7 @@ Cutpoint automates the entire process of retention analysis, transforming raw da
    - **Content:** 3D hero section built with React Three Fiber, scroll-driven animations explaining the "guessing game" of current analytics, clear CTA to sign up, pricing (mocked), and footer.
 2. **About Page (`/about`)**
    - **Purpose:** Explain the tech stack and workflow.
-   - **Content:** Technical showcase detailing how Gemini 3.8 Flash and the 5-Agent architecture work together to generate insights.
+   - **Content:** Technical showcase detailing how Gemini 3.8 Flash and the 8-Agent architecture work together to generate insights.
 3. **Sign In (`/login`)**
    - **Purpose:** Existing user authentication.
    - **Content:** Clean glassmorphic form for Email/Password, and a prominent "Sign in with Google" button. Error handling and password reset links.
@@ -94,7 +104,7 @@ Cutpoint automates the entire process of retention analysis, transforming raw da
    - **Content:** List of connected channel's recent videos (thumbnails, titles, views). Status indicators (Analyzed vs. Unanalyzed). Links to past reports. Button to initiate a new analysis.
 6. **Analysis Progress (`/dashboard/analysis/[id]`)**
    - **Purpose:** Keep the user engaged while the background agents do the heavy lifting.
-   - **Content:** Real-time terminal-style or visually engaging progress indicators showing the 4 phases of execution (Fetching Data -> Detecting Cliffs -> AI Watching Video -> Generating Report).
+   - **Content:** Real-time terminal-style or visually engaging progress indicators showing the multi-phase execution (Ingestion -> Processing -> Investigation -> Verification -> Synthesis).
 7. **Report View (`/dashboard/report/[id]`)**
    - **Purpose:** Display the final insights.
    - **Content:** The detailed Forensic Report (markdown rendered beautifully). A video player synced to the cliff timestamps. A floating chat widget in the bottom right corner for follow-up Q&A.
@@ -128,7 +138,7 @@ To win the AI Content Engine Hackathon, the project must meet these criteria:
 1. **End-to-End Functionality:** The user can log in, select a video, run the analysis, and receive a coherent, accurate multimodal report. (30% weight)
 2. **Real World Usefulness:** The insights generated must be genuinely useful, not generic fluff. The cliff detection must accurately find the steep drops. (30% weight)
 3. **Creativity & Design:** The application must look premium. The use of React Three Fiber and GSAP must elevate the experience beyond a standard SaaS dashboard. (20% weight)
-4. **Technical Execution:** The 5-agent parallel pipeline must run cleanly. The codebase must be well-organized, typed (TypeScript), and thoroughly documented. (20% weight)
+4. **Technical Execution:** The 8-agent parallel pipeline must run cleanly. The codebase must be well-organized, typed (TypeScript), and thoroughly documented. (20% weight)
 5. **Demo Readiness:** The app must survive a live demo without crashing. API limits must be accounted for gracefully.
 
 ## 11. Constraints
