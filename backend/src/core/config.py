@@ -49,7 +49,12 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> List[str]:
-        return [origin.strip() for origin in self.BACKEND_CORS_ORIGINS.split(",") if origin.strip()]
+        origins = [origin.strip() for origin in self.BACKEND_CORS_ORIGINS.split(",") if origin.strip()]
+        if self.FRONTEND_URL:
+            clean_frontend = self.FRONTEND_URL.rstrip("/")
+            if clean_frontend not in origins:
+                origins.append(clean_frontend)
+        return origins
 
 
 settings = Settings()
