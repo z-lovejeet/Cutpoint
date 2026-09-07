@@ -33,6 +33,9 @@ class Settings(BaseSettings):
 
     # AI Models
     GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-3.5-flash-lite"
+    GEMINI_FALLBACK_MODEL: str = "gemini-3.5-flash"
+    GEMINI_MAX_RPD: int = 450
     GROQ_API_KEY: str = ""
     GROQ_REPORT_MODEL: str = "openai/gpt-oss-20b"
     GROQ_CHAT_MODEL: str = "openai/gpt-oss-120b"
