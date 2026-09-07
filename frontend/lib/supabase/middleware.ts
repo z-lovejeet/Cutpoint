@@ -40,6 +40,9 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const isGuest = request.cookies.get("cutpoint_guest_session")?.value === "true";
+  const hasAccess = !!user || isGuest;
+
   const url = request.nextUrl.clone();
   const pathname = url.pathname;
 
@@ -52,13 +55,13 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute =
     pathname === "/sign-in" || pathname === "/register";
 
-  if (!user && isProtectedRoute) {
+  if (!hasAccess && isProtectedRoute) {
     url.pathname = "/sign-in";
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthRoute) {
+  if (hasAccess && isAuthRoute) {
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
