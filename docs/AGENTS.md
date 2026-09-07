@@ -1,589 +1,280 @@
-# Multi-Agent System Design Document
+# Cutpoint Master Agent Architecture
 
-This document outlines the architecture, specifications, and implementation details for the multi-agent system powering **Cutpoint**. The system utilizes a specialized, parallelized workflow to analyze YouTube retention data, detect audience drop-off points (cliffs), perform multimodal analysis of the video at those points, and generate actionable forensic reports.
+## 1. Why a Genuine Multi-Agent Architecture
 
----
+In the era of AI hype, many products claim to use "agents" but are actually just scripted pipelines with API wrappers (often called "agent-washing"). Cutpoint distinguishes itself by implementing a **genuine multi-agent architecture** where agents exhibit true autonomous behaviors.
 
-## 1. Agent System Overview
+### Agent-Washing vs. Genuine Agentic Behavior
 
-### Why a Multi-Agent Architecture?
-Cutpoint operates on complex, multi-modal data streams: numeric time-series data from YouTube Analytics, visual and audio context from video files, and structured textual reports. A single LLM prompt cannot handle this end-to-end pipeline effectively due to context window limitations, latency constraints, and the need for specialized processing (e.g., mathematical operations).
+| Feature | Agent-Washed Pipeline (Scripted) | Genuine Agentic System (Cutpoint) |
+| :--- | :--- | :--- |
+| **Control Flow** | Hardcoded `if/else` logic and fixed sequence of operations. | Dynamic orchestration. The Supervisor Agent plans the investigation based on initial findings. |
+| **Tool Usage** | Pre-determined API calls with static parameters. | Dynamic tool calling. Agents choose which tools to use, when, and with what parameters based on intermediate results. |
+| **Error Handling** | Basic `try/except` blocks; halts on unexpected errors. | Self-correction loops. If a tool fails or returns anomalous data, agents hypothesize why and try alternative approaches or fallback tools. |
+| **Verification** | Single-pass generation. | Multi-agent debate. The Critic Agent actively tries to disprove the Forensic Agent's hypotheses, forcing re-evaluation if confidence is low. |
+| **State Management** | Linear passing of JSON objects. | Shared blackboard (AnalysisState) with asynchronous message passing and consensus building. |
 
-By decomposing the pipeline into specialized agents, we achieve:
-- **Separation of Concerns:** Each agent is optimized for a single task (e.g., pure math vs. multimodal reasoning).
-- **Optimal Model Selection:** We route specific tasks to the best-suited models (Gemini 3.8 Flash for video, Groq GPT-OSS 20B for fast formatting, Groq GPT-OSS 120B for deep reasoning).
-- **Reduced Latency:** Parallel execution allows non-dependent tasks to run concurrently.
-
-### Parallel Execution Strategy
-The orchestrator leverages Python's `asyncio` to run independent phases concurrently:
-- **Phase 1 (Parallel):** Fetch YouTube Data (Agent 1) runs simultaneously with Uploading the Video to Gemini (Agent 3, Step 1).
-- **Phase 2 (Parallel):** Detect Cliffs (Agent 2) runs simultaneously with Gemini processing the video (Agent 3 waiting for ACTIVE state).
-- **Phase 3 (Sequential):** Video Analyzer (Agent 3, Step 2) analyzes specific cliff timestamps.
-- **Phase 4 (Sequential):** Report Generator (Agent 4) compiles all data into the final output.
-
-### Why Pure `asyncio` over LangGraph or CrewAI?
-For this hackathon project, we eschew heavy agent frameworks like LangGraph or CrewAI in favor of pure Python `asyncio`.
-1. **Simplicity & Speed:** Frameworks add abstraction layers that slow down execution and complicate debugging. Pure `asyncio` is closer to the metal and highly performant.
-2. **Predictable State Management:** We use a well-defined Pydantic model (`AnalysisState`) passed between functions, avoiding the "black box" state management of some agent frameworks.
-3. **Engineering Elegance:** Judges appreciate clean, standard Python engineering over framework bloat, demonstrating a deep understanding of concurrent execution and API orchestration.
+### What Makes Cutpoint Agents Autonomous?
+1.  **Dynamic Tool Calling:** The Multimodal Forensic Agent and Audio Agent don't just process data; they *investigate*. They use tools like `inspect_keyframes`, `measure_visual_stagnancy`, and `analyze_speech_cadence` dynamically based on the specific anomalies detected in a video segment.
+2.  **Perception-Action-Reflection Loops:** Agents don't just output an answer. They observe an anomaly (Perception), use a tool to gather data (Action), and evaluate if the data explains the anomaly (Reflection). If not, they iterate.
+3.  **Self-Correction:** If the Data Ingestion Agent encounters incomplete metadata or rate limits, it autonomously implements backoff strategies or queries alternative endpoints.
+4.  **Inter-Agent Debate:** The Retention Critic Agent acts as a built-in adversarial network. It doesn't generate content; it challenges the findings of other agents, ensuring the final report is robust and highly confident.
 
 ---
 
 ## 2. Agent Roster
 
-| Agent Name | Role | Core Technology / LLM | Inputs | Outputs |
-|---|---|---|---|---|
-| **Agent 1: Data Fetcher** | Retrieves analytics and metadata | Pure API (No LLM) | `video_id`, `oauth_token` | `RetentionData`, `VideoMetadata` |
-| **Agent 2: Cliff Detector** | Mathematically finds drop-offs | NumPy/SciPy (No LLM) | `RetentionData` | `List[CliffPoint]` |
-| **Agent 3: Video Analyzer** | Multimodal analysis of cliffs | Gemini 3.8 Flash | `video_file`, `List[CliffPoint]` | `List[CliffAnalysis]` |
-| **Agent 4: Report Generator** | Creates final structured report | Groq GPT-OSS 20B | `Metadata`, `Cliffs`, `Analyses`| `ForensicReport` |
-| **Agent 5: Chat Agent** | Follow-up Q&A on report | Groq GPT-OSS 120B | `ForensicReport`, `user_query` | Text Response |
-| **Orchestrator** | Manages pipeline and state | Python `asyncio` | Trigger Event | `AnalysisState` |
+Cutpoint utilizes a specialized team of 8 distinct agents, ranging from pure mathematical processors to deep reasoning LLMs.
+
+| Agent Name | Role Title | Model/Technology | Autonomous Behaviors | Documentation Link |
+| :--- | :--- | :--- | :--- | :--- |
+| **Supervisor Agent** | Lead Investigator | Groq GPT-OSS 120B | Dynamic investigation planning, conflict resolution, consensus evaluation. | [docs/agents/AGENT_1_SUPERVISOR.md](docs/agents/AGENT_1_SUPERVISOR.md) |
+| **Data Ingestion Agent** | The Archivist | Pure API (No LLM) | Autonomous retry, data validation, anomaly flagging, self-healing queries. | [docs/agents/AGENT_2_DATA_INGESTION.md](docs/agents/AGENT_2_DATA_INGESTION.md) |
+| **Cliff Detector Agent** | The Mathematician | NumPy/SciPy (No LLM) | Adaptive thresholding, ensemble anomaly detection, self-tuning sensitivity. | [docs/agents/AGENT_3_CLIFF_DETECTOR.md](docs/agents/AGENT_3_CLIFF_DETECTOR.md) |
+| **Multimodal Forensic Agent** | The Visual Detective | Gemini 3.8 Flash | Dynamic tool calling, visual hypothesis testing, iterative re-inspection. | [docs/agents/AGENT_4_MULTIMODAL_FORENSIC.md](docs/agents/AGENT_4_MULTIMODAL_FORENSIC.md) |
+| **Audio & Cadence Agent** | The Sound Engineer | Gemini 3.8 Flash | Audio anomaly isolation, sentiment correlation, cadence tool orchestration. | [docs/agents/AGENT_5_AUDIO_CADENCE.md](docs/agents/AGENT_5_AUDIO_CADENCE.md) |
+| **Retention Critic Agent** | The Skeptic | Groq GPT-OSS 120B | Adversarial questioning, evidence scoring, forced re-investigation loops. | [docs/agents/AGENT_6_RETENTION_CRITIC.md](docs/agents/AGENT_6_RETENTION_CRITIC.md) |
+| **Report Synthesizer Agent** | The Executive Editor | Groq GPT-OSS 20B | Iterative refinement, coherence checking, dynamic formatting based on findings. | [docs/agents/AGENT_7_REPORT_SYNTHESIZER.md](docs/agents/AGENT_7_REPORT_SYNTHESIZER.md) |
+| **Strategist Chat Agent** | The Studio Advisor | Groq GPT-OSS 120B | Interactive Q&A, dynamic context retrieval, follow-up tool execution. | [docs/agents/AGENT_8_STRATEGIST_CHAT.md](docs/agents/AGENT_8_STRATEGIST_CHAT.md) |
 
 ---
 
-## 3. Agent 1: Data Fetcher
+## 3. System Architecture
 
-### Detailed Specification
-- **Purpose:** Fetch YouTube Analytics retention data + video metadata.
-- **LLM:** None (pure API calls).
-- **Input:** `video_id` (string), `oauth_token` (string).
-- **Output:**
-  - `RetentionData`: A time-series representation of `audienceWatchRatio`.
-  - `VideoMetadata`: Title, duration, views, published date, etc.
-- **YouTube Analytics API call:** `reports.query` with `metrics=audienceWatchRatio`, `dimensions=elapsedVideoTimeRatio`.
-- **YouTube Data API call:** `videos.list` with `part=snippet,statistics,contentDetails`.
-- **Error handling:** Token refresh, quota exceeded, video not found.
+The Cutpoint architecture is built on asynchronous orchestration, enabling massive parallelization and complex inter-agent workflows.
 
-### Implementation
+```mermaid
+graph TD
+    %% Define Styles
+    classDef llm fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef nonllm fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef data fill:#dfd,stroke:#333,stroke-width:2px;
+    classDef user fill:#fdd,stroke:#333,stroke-width:2px;
+
+    %% Nodes
+    U[User Input: Video ID]:::user
+    
+    subgraph Phase 1: Ingestion
+        DIA(Data Ingestion Agent):::nonllm
+        VU[Video Upload/Fetch]:::data
+    end
+
+    subgraph Phase 2: Processing
+        CDA(Cliff Detector Agent):::nonllm
+        VP[Video Frame Extraction & Audio Split]:::data
+    end
+
+    subgraph Phase 3: Investigation Fan-out
+        SA(Supervisor Agent):::llm
+        MFA(Multimodal Forensic Agent):::llm
+        ACA(Audio & Cadence Agent):::llm
+    end
+
+    subgraph Phase 4: Verification
+        RCA(Retention Critic Agent):::llm
+    end
+
+    subgraph Phase 5: Synthesis
+        RSA(Report Synthesizer Agent):::llm
+    end
+
+    subgraph Phase 6: Interaction
+        SCA(Strategist Chat Agent):::llm
+    end
+    
+    DB[(Supabase DB)]:::data
+
+    %% Edges
+    U --> DIA
+    U --> VU
+    DIA --> DB
+    DIA --> CDA
+    VU --> VP
+    VP --> SA
+    CDA --> SA
+    
+    SA -->|Dispatches Plan| MFA
+    SA -->|Dispatches Plan| ACA
+    
+    MFA -->|Visual Findings| SA
+    ACA -->|Audio Findings| SA
+    
+    SA -->|Submits Hypotheses| RCA
+    RCA -->|Challenges/Approves| SA
+    
+    %% Debate loop
+    SA -.->|Re-investigate| MFA
+    SA -.->|Re-investigate| ACA
+    
+    SA -->|Verified Findings| RSA
+    RSA -->|Final Report| DB
+    RSA --> SCA
+    
+    SCA <-->|Interactive Chat| U
+```
+
+---
+
+## 4. Investigation Pipeline (Detailed Flow)
+
+The forensic pipeline is fully automated and orchestrated dynamically based on the data discovered at each step.
+
+1.  **Trigger:** A user provides a YouTube Video ID.
+2.  **Phase 1: Ingestion (Parallel):**
+    *   The **Data Ingestion Agent** fetches metadata and the high-resolution retention curve from the YouTube API, handling any rate limits or pagination automatically.
+    *   Simultaneously, the video file is downloaded or accessed.
+3.  **Phase 2: Mathematical Processing (Parallel):**
+    *   The **Cliff Detector Agent** processes the retention curve using NumPy/SciPy. It applies Gaussian smoothing and calculates the first derivative to identify sharp drop-offs (cliffs). It outputs specific timestamp ranges for investigation.
+    *   The video is processed to extract keyframes at these specific timestamps and separate the audio track.
+4.  **Phase 3: Orchestration & Investigation (Fan-out):**
+    *   The **Supervisor Agent** reviews the list of cliffs identified by the Cliff Detector. It formulates an `InvestigationPlan`.
+    *   It dispatches the **Multimodal Forensic Agent** to analyze the visual components of each cliff using Gemini 3.8 Flash and tools like `inspect_keyframes`.
+    *   It concurrently dispatches the **Audio & Cadence Agent** to analyze the audio track during the cliffs using tools like `detect_dead_air`.
+5.  **Phase 4: Debate Loop:**
+    *   The Forensic and Audio agents return their hypotheses to the Supervisor (e.g., "Cliff at 2:15 caused by stagnant visuals and a drop in audio energy").
+    *   The Supervisor forwards these hypotheses to the **Retention Critic Agent**.
+    *   The Critic attempts to poke holes in the hypotheses. If the evidence is weak, it rejects the hypothesis, forcing the Supervisor to send the Forensic or Audio agent back with a refined prompt to gather more data (the Perception-Action-Reflection loop).
+6.  **Phase 5: Synthesis:**
+    *   Once the Critic approves the findings (or maximum iterations are reached), the Supervisor passes the verified data to the **Report Synthesizer Agent**.
+    *   The Synthesizer generates a highly structured, polished markdown report detailing the findings, confidence scores, and actionable prescriptions for the creator.
+7.  **Phase 6: Interactive Strategy:**
+    *   The user reviews the report and can interact with the **Strategist Chat Agent** to ask follow-up questions, drill down into specific cliffs, or request alternative strategies based on the report's context.
+
+---
+
+## 5. Inter-Agent Communication Protocol
+
+Cutpoint eschews complex, black-box agent frameworks in favor of a clean, pure `asyncio` architecture using a shared state and explicit message passing.
+
+### Shared State Model (`AnalysisState`)
+Agents do not communicate via raw text strings. They communicate by updating and reading from a shared Pydantic model, `AnalysisState`. This acts as the "blackboard" for the investigation.
 
 ```python
-import aiohttp
-import asyncio
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import List, Dict, Optional, Any
+from datetime import datetime
+
+class CliffAnalysis(BaseModel):
+    cliff_id: str
+    start_time: float
+    end_time: float
+    magnitude: float
+    visual_hypothesis: Optional[str] = None
+    audio_hypothesis: Optional[str] = None
+    critic_score: float = 0.0
+    status: str = "pending" # pending, investigating, debating, verified, rejected
+
+class AnalysisState(BaseModel):
+    video_id: str
+    status: str = "initializing"
+    cliffs: List[CliffAnalysis] = []
+    messages: List[Dict[str, Any]] = [] # Message history for the Supervisor
+    final_report: Optional[str] = None
+```
+
+### Message Passing & The Debate Loop
+The Supervisor acts as the central router. When the Multimodal Agent finishes analyzing a cliff, it returns a structured payload. The Supervisor updates the `AnalysisState` and then messages the Critic Agent.
+
+```python
+# Simplified Conceptual Implementation
+async def debate_loop(state: AnalysisState, supervisor, forensic, critic):
+    for cliff in state.cliffs:
+        if cliff.status == "investigating":
+            # 1. Forensic Agent investigates
+            visual_findings = await forensic.investigate(cliff)
+            cliff.visual_hypothesis = visual_findings.hypothesis
+            
+            # 2. Critic Agent evaluates
+            evaluation = await critic.evaluate(cliff)
+            cliff.critic_score = evaluation.score
+            
+            # 3. Decision
+            if evaluation.score >= 0.8:
+                cliff.status = "verified"
+            else:
+                cliff.status = "investigating" # Triggers another loop
+                # Supervisor gives feedback to Forensic agent based on Critic's notes
+                await supervisor.provide_feedback(forensic, evaluation.feedback)
+```
+
+---
+
+## 6. Agentic Behaviors Summary
+
+| Agent | Core Tool Calling Capabilities | Reflection & Self-Correction |
+| :--- | :--- | :--- |
+| **Supervisor** | `dispatch_agent`, `resolve_conflict` | Adjusts `InvestigationPlan` if agents fail to find conclusive evidence. |
+| **Data Ingestion** | N/A (API routing) | Exponential backoff on rate limits, falls back to alternative data sources if primary fails. |
+| **Cliff Detector** | N/A (Math functions) | Adjusts detection sensitivity (sigma/threshold) if too many/too few cliffs are found. |
+| **Forensic (Gemini)** | `inspect_keyframes`, `measure_visual_stagnancy`, `check_cut_frequency` | "I found a cut, but the visual stagnancy is still high. I need to re-inspect the frames before and after the cut." |
+| **Audio (Gemini)** | `analyze_speech_cadence`, `detect_dead_air`, `extract_transcript_sentiment` | "The dead air tool shows nothing, but retention dropped. Let me check the sentiment for controversial statements instead." |
+| **Critic (Groq)** | `query_knowledge_base` | "The Forensic agent blames visual stagnancy, but the cliff is very sharp. This usually implies a sudden negative event. I will reject this and ask for a sentiment check." |
+| **Synthesizer** | `format_markdown`, `generate_chart` | Verifies report structure matches the required schema; auto-corrects formatting errors. |
+| **Strategist Chat** | `query_report_section`, `re_evaluate_cliff` | If user asks a question not in the report, it can trigger specific agents to re-run analysis on demand. |
+
+---
+
+## 7. LLM Router & Fallback Strategy
+
+To ensure reliability during the hackathon and in production, Cutpoint implements a robust LLM routing and fallback mechanism.
+
+*   **Primary Heavy Reasoning:** Groq `llama3-70b-8192` (representing the 120B class in practice for speed/cost).
+*   **Primary Multimodal:** Google Gemini `gemini-1.5-flash-001` (fast, efficient multimodal processing).
+*   **Primary Fast Output:** Groq `mixtral-8x7b-32768` (for synthesis).
+
+**Fallback Strategy:**
+If a Groq endpoint hits a 429 (Rate Limit) or 500 error, the system automatically falls back to an alternative Groq model, or as a last resort, routes the text task to Gemini Flash to maintain uptime, albeit with potentially slightly lower reasoning capability for complex debate tasks.
+
+---
+
+## 8. Shared Data Models (Core Pydantic)
+
+These models define the strict contracts between agents.
+
+```python
+from pydantic import BaseModel, Field
 from typing import List, Optional
 
 class VideoMetadata(BaseModel):
     video_id: str
     title: str
-    duration_iso: str
-    views: int
-    channel_id: str
+    duration_seconds: int
+    category: str
 
 class RetentionPoint(BaseModel):
-    elapsed_ratio: float
-    watch_ratio: float
+    timestamp: float
+    retention_percent: float
 
 class RetentionData(BaseModel):
     video_id: str
     points: List[RetentionPoint]
 
-class DataFetcherAgent:
-    def __init__(self, api_key: str):
-        self.api_key = api_key
-        self.data_api_url = "https://www.googleapis.com/youtube/v3/videos"
-        self.analytics_api_url = "https://youtubeanalytics.googleapis.com/v2/reports"
+class AgentMessage(BaseModel):
+    sender: str
+    recipient: str
+    content: str
+    timestamp: float
+    context_id: Optional[str] = None # e.g., a specific cliff_id
 
-    async def fetch_metadata(self, video_id: str, session: aiohttp.ClientSession) -> VideoMetadata:
-        params = {
-            "part": "snippet,statistics,contentDetails",
-            "id": video_id,
-            "key": self.api_key
-        }
-        async with session.get(self.data_api_url, params=params) as response:
-            if response.status != 200:
-                raise Exception(f"YouTube Data API error: {response.status}")
-            
-            data = await response.json()
-            if not data.get("items"):
-                raise ValueError("Video not found")
-                
-            item = data["items"][0]
-            return VideoMetadata(
-                video_id=video_id,
-                title=item["snippet"]["title"],
-                duration_iso=item["contentDetails"]["duration"],
-                views=int(item["statistics"]["viewCount"]),
-                channel_id=item["snippet"]["channelId"]
-            )
-
-    async def fetch_retention(self, video_id: str, oauth_token: str, session: aiohttp.ClientSession) -> RetentionData:
-        headers = {"Authorization": f"Bearer {oauth_token}"}
-        params = {
-            "ids": "channel==MINE",
-            "metrics": "audienceWatchRatio",
-            "dimensions": "elapsedVideoTimeRatio",
-            "filters": f"video=={video_id}",
-            "startDate": "2000-01-01",  # YouTube Analytics requires arbitrary start/end dates
-            "endDate": "2030-01-01"
-        }
-        
-        async with session.get(self.analytics_api_url, headers=headers, params=params) as response:
-            if response.status == 401:
-                raise PermissionError("OAuth token expired or invalid")
-            elif response.status != 200:
-                error_body = await response.text()
-                raise Exception(f"YouTube Analytics API error: {response.status} - {error_body}")
-                
-            data = await response.json()
-            rows = data.get("rows", [])
-            
-            points = [
-                RetentionPoint(elapsed_ratio=float(row[0]), watch_ratio=float(row[1]))
-                for row in rows
-            ]
-            
-            return RetentionData(video_id=video_id, points=points)
-
-    async def run(self, video_id: str, oauth_token: str) -> tuple[VideoMetadata, RetentionData]:
-        async with aiohttp.ClientSession() as session:
-            # Run both API calls in parallel
-            metadata_task = self.fetch_metadata(video_id, session)
-            retention_task = self.fetch_retention(video_id, oauth_token, session)
-            
-            metadata, retention = await asyncio.gather(metadata_task, retention_task)
-            return metadata, retention
-```
-
----
-
-## 4. Agent 2: Cliff Detector
-
-### Detailed Specification
-- **Purpose:** Mathematically identify significant drops in viewer retention.
-- **LLM:** None (NumPy/SciPy based).
-- **Input:** `RetentionData`
-- **Output:** `List[CliffPoint]` containing timestamp, drop_percentage, severity, and context windows.
-- **Algorithm:**
-  1. Extract `watch_ratio` as a NumPy array.
-  2. Apply a light Gaussian filter to smooth noise.
-  3. Calculate the first derivative (difference between adjacent points).
-  4. Find local minima in the derivative array (points where the drop is steepest).
-  5. Filter by a severity threshold (e.g., >5% absolute drop within a small window).
-  6. Map back to real timestamps based on `elapsed_ratio` and video duration.
-
-### Implementation
-
-```python
-import numpy as np
-from scipy.ndimage import gaussian_filter1d
-from pydantic import BaseModel
-from typing import List
-from .utils import parse_iso_duration # Assumed utility function
-
-class CliffPoint(BaseModel):
-    timestamp_seconds: int
-    drop_percentage: float
-    severity: str # "LOW", "MEDIUM", "HIGH"
-    window_start: int
-    window_end: int
-
-class CliffDetectorAgent:
-    def __init__(self, severity_threshold: float = 0.05, smoothing_sigma: float = 2.0):
-        self.severity_threshold = severity_threshold
-        self.smoothing_sigma = smoothing_sigma
-
-    def calculate_cliffs(self, retention: RetentionData, duration_seconds: int) -> List[CliffPoint]:
-        if not retention.points:
-            return []
-
-        ratios = np.array([p.elapsed_ratio for p in retention.points])
-        retentions = np.array([p.watch_ratio for p in retention.points])
-
-        # Smooth the curve to avoid micro-fluctuations
-        smoothed = gaussian_filter1d(retentions, sigma=self.smoothing_sigma)
-        
-        # Calculate first derivative
-        derivative = np.gradient(smoothed)
-        
-        # Find points where the derivative is notably negative
-        cliffs = []
-        
-        # Simple local minima detection on derivative
-        for i in range(1, len(derivative) - 1):
-            if derivative[i] < derivative[i-1] and derivative[i] < derivative[i+1]:
-                drop = smoothed[i-1] - smoothed[i+1] # Drop over local window
-                
-                if drop > self.severity_threshold:
-                    time_sec = int(ratios[i] * duration_seconds)
-                    
-                    if drop > 0.15: severity = "HIGH"
-                    elif drop > 0.10: severity = "MEDIUM"
-                    else: severity = "LOW"
-                    
-                    cliffs.append(CliffPoint(
-                        timestamp_seconds=time_sec,
-                        drop_percentage=round(drop * 100, 2),
-                        severity=severity,
-                        window_start=max(0, time_sec - 10),
-                        window_end=min(duration_seconds, time_sec + 15)
-                    ))
-                    
-        # Sort by severity (largest drop first)
-        cliffs.sort(key=lambda x: x.drop_percentage, reverse=True)
-        return cliffs[:5] # Return top 5 cliffs
-
-    def run(self, retention: RetentionData, metadata: VideoMetadata) -> List[CliffPoint]:
-        duration_sec = parse_iso_duration(metadata.duration_iso)
-        return self.calculate_cliffs(retention, duration_sec)
-
-# Example Input Data:
-# Points: [(0.0, 1.0), (0.01, 0.95), (0.02, 0.94), (0.03, 0.80), (0.04, 0.79)...]
-# Drop at 0.03 is 14% (0.94 to 0.80).
-# If duration is 600s, 0.03 is 18s. Window: 8s to 33s.
-```
-
----
-
-## 5. Agent 3: Video Analyzer
-
-### Detailed Specification
-- **Purpose:** Leverage Gemini 3.8 Flash's native multimodal capabilities to watch the video at specific drop-off points and explain *why* viewers left.
-- **LLM:** Gemini 3.8 Flash (Vertex AI or AI Studio).
-- **Input:** Video file path, `List[CliffPoint]`.
-- **Output:** `List[CliffAnalysis]` with structured root causes and recommendations.
-- **Process:**
-  1. Upload video using `google.genai` Files API.
-  2. Poll until `state=ACTIVE`.
-  3. Send a prompt for each cliff, explicitly referencing timestamps.
-
-### EXACT Gemini Prompt Template
-```text
-You are an expert YouTube audience retention analyst.
-Review the provided video between {window_start} seconds and {window_end} seconds.
-At exactly {timestamp} seconds, the audience retention drops significantly by {drop_percentage}%.
-
-Analyze this segment visually and audibly to determine WHY viewers left.
-Look for:
-- Pacing issues (too slow, dead air)
-- Boring visuals or lack of b-roll
-- Audio issues (poor quality, sudden noises)
-- Content issues (tangents, confusing explanations, failure to deliver the hook)
-
-Return your analysis strictly in the requested JSON format.
-```
-
-### Implementation
-
-```python
-import asyncio
-from google import genai
-from google.genai import types
-from pydantic import BaseModel, Field
-from typing import List
-
-class CliffAnalysis(BaseModel):
-    timestamp_seconds: int
-    root_cause: str = Field(description="The primary reason viewers left.")
-    visual_analysis: str = Field(description="Analysis of on-screen elements.")
-    audio_analysis: str = Field(description="Analysis of speech, music, or pacing.")
-    recommendations: List[str] = Field(description="Actionable steps to fix this in future videos.")
-
-class VideoAnalyzerAgent:
-    def __init__(self, api_key: str):
-        self.client = genai.Client(api_key=api_key)
-        self.model_name = "gemini-3.8-flash"
-
-    async def upload_video(self, file_path: str) -> str:
-        # Step 1: Upload
-        # In a real async environment, we might run this in a threadpool
-        loop = asyncio.get_event_loop()
-        uploaded_file = await loop.run_in_executor(None, self.client.files.upload, file=file_path)
-        
-        # Step 2: Poll
-        while True:
-            file_info = await loop.run_in_executor(None, self.client.files.get, name=uploaded_file.name)
-            if file_info.state == "ACTIVE":
-                break
-            elif file_info.state == "FAILED":
-                raise Exception("Video processing failed in Gemini.")
-            await asyncio.sleep(2)
-            
-        return uploaded_file.name
-
-    async def analyze_cliff(self, file_name: str, cliff: CliffPoint) -> CliffAnalysis:
-        prompt = f"""
-        You are an expert YouTube audience retention analyst.
-        Review the provided video between {cliff.window_start} seconds and {cliff.window_end} seconds.
-        At exactly {cliff.timestamp_seconds} seconds, the audience retention drops significantly by {cliff.drop_percentage}%.
-
-        Analyze this segment visually and audibly to determine WHY viewers left.
-        Look for pacing issues, boring visuals, poor audio, or content tangents.
-        """
-        
-        loop = asyncio.get_event_loop()
-        
-        # Use structured outputs
-        response = await loop.run_in_executor(
-            None,
-            lambda: self.client.models.generate_content(
-                model=self.model_name,
-                contents=[
-                    types.Part.from_uri(file_uri=file_name, mime_type="video/mp4"),
-                    prompt
-                ],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=CliffAnalysis,
-                ),
-            )
-        )
-        
-        # Parse JSON to Pydantic
-        import json
-        data = json.loads(response.text)
-        data['timestamp_seconds'] = cliff.timestamp_seconds
-        return CliffAnalysis(**data)
-
-    async def run(self, file_path: str, cliffs: List[CliffPoint]) -> List[CliffAnalysis]:
-        file_name = await self.upload_video(file_path)
-        
-        # Analyze all cliffs in parallel using asyncio
-        tasks = [self.analyze_cliff(file_name, cliff) for cliff in cliffs]
-        analyses = await asyncio.gather(*tasks)
-        
-        return list(analyses)
-```
-
----
-
-## 6. Agent 4: Report Generator
-
-### Detailed Specification
-- **Purpose:** Synthesize raw data, cliff points, and multimodal analyses into a polished, professional forensic report.
-- **LLM:** Groq GPT-OSS 20B (`openai/gpt-oss-20b`). Chosen for extremely fast generation of structured text.
-- **Input:** `VideoMetadata`, `List[CliffPoint]`, `List[CliffAnalysis]`.
-- **Output:** `ForensicReport`
-
-### EXACT Groq Prompt Template
-```text
-System: You are an expert YouTube content strategist writing a Forensic Retention Report.
-Given the video metadata and analysis of specific viewer drop-off points, generate a comprehensive report.
-Output MUST be valid JSON conforming to the requested schema.
-
-User:
-Title: {title}
-Duration: {duration}
-Views: {views}
-
-Drop-off Analysis:
-{json_encoded_cliff_analyses}
-
-Provide an executive summary, map the cliff reports, assign an overall health score (0-100), and provide 3-5 global action items.
-```
-
-### Implementation
-
-```python
-import os
-import json
-from groq import AsyncGroq
-from pydantic import BaseModel
-from typing import List
+class InvestigationPlan(BaseModel):
+    cliffs_to_investigate: List[str]
+    priority: str = "magnitude" # or "chronological"
+    required_confidence: float = 0.8
 
 class ForensicReport(BaseModel):
-    executive_summary: str
-    overall_health_score: int
-    cliff_reports: List[dict] # Will contain merged CliffPoint and CliffAnalysis data
-    action_items: List[str]
-
-class ReportGeneratorAgent:
-    def __init__(self, api_key: str):
-        self.client = AsyncGroq(api_key=api_key)
-        self.model = "openai/gpt-oss-20b"
-
-    async def run(self, metadata: VideoMetadata, cliffs: List[CliffPoint], analyses: List[CliffAnalysis]) -> ForensicReport:
-        # Merge data for context
-        merged_data = []
-        for cliff in cliffs:
-            analysis = next((a for a in analyses if a.timestamp_seconds == cliff.timestamp_seconds), None)
-            if analysis:
-                merged_data.append({
-                    "timestamp": cliff.timestamp_seconds,
-                    "drop": cliff.drop_percentage,
-                    "severity": cliff.severity,
-                    "root_cause": analysis.root_cause,
-                    "visuals": analysis.visual_analysis,
-                    "audio": analysis.audio_analysis,
-                    "fixes": analysis.recommendations
-                })
-
-        prompt = f"""
-        Video Title: {metadata.title}
-        Views: {metadata.views}
-        
-        Drop-off Analyses:
-        {json.dumps(merged_data, indent=2)}
-        
-        Generate a cohesive forensic retention report.
-        """
-
-        # In production, use Groq's JSON mode if available, or strictly prompt for JSON
-        response = await self.client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": "You output JSON matching the ForensicReport schema."},
-                {"role": "user", "content": prompt}
-            ],
-            model=self.model,
-            response_format={"type": "json_object"}
-        )
-        
-        result_json = json.loads(response.choices[0].message.content)
-        return ForensicReport(**result_json)
-```
-
----
-
-## 7. Agent 5: Chat Agent
-
-### Detailed Specification
-- **Purpose:** Answer follow-up user questions based on the generated report.
-- **LLM:** Groq GPT-OSS 120B (`openai/gpt-oss-120b`). Chosen for flagship reasoning over large context.
-- **Trigger:** Interactive chat UI.
-- **Context:** The full `ForensicReport` is injected as a system message to ground the model.
-
-### EXACT System Prompt
-```text
-You are an elite YouTube strategist assistant. 
-You are discussing a Forensic Retention Report with the creator.
-Use the following report context to answer their questions accurately. Be encouraging but direct.
-
-REPORT CONTEXT:
-{report_json}
-```
-
-### 5 Example Q&A Pairs
-1. **User:** Why did everyone leave at 1:20?
-   **Agent:** At 1:20 (80s), the report shows a 14% drop. The analysis indicates you went on a tangent about your sponsor without a smooth transition, causing viewers to click away.
-2. **User:** How can I improve my health score?
-   **Agent:** Your current score is 65. To improve it, focus on the top action items: cut dead air in the first 30 seconds and use b-roll during complex explanations to maintain visual pacing.
-3. **User:** Was the lighting bad at the end?
-   **Agent:** The report doesn't mention lighting issues specifically, but it does note that the visuals became static at the 5:00 mark. Adding motion or changing angles might help more than adjusting the light.
-4. **User:** Should I cut the intro completely?
-   **Agent:** Yes, the drop-off at 0:15 suggests your 20-second logo intro is hurting retention. Try a cold open with a hook instead.
-5. **User:** What's the biggest issue with this video?
-   **Agent:** The most severe cliff was a 22% drop at 3:45. This occurred because the main payoff was revealed too early, leaving viewers with no reason to watch the remainder of the video.
-
-### Implementation
-
-```python
-from groq import AsyncGroq
-from typing import List, Dict
-
-class ChatAgent:
-    def __init__(self, api_key: str):
-        self.client = AsyncGroq(api_key=api_key)
-        self.model = "openai/gpt-oss-120b"
-        
-    async def chat(self, report: ForensicReport, message_history: List[Dict[str, str]], new_message: str) -> str:
-        system_prompt = f"""
-        You are an elite YouTube strategist assistant.
-        REPORT CONTEXT:
-        {report.model_dump_json(indent=2)}
-        """
-        
-        messages = [{"role": "system", "content": system_prompt}]
-        messages.extend(message_history)
-        messages.append({"role": "user", "content": new_message})
-        
-        response = await self.client.chat.completions.create(
-            messages=messages,
-            model=self.model,
-            temperature=0.7
-        )
-        
-        return response.choices[0].message.content
-```
-
----
-
-## 8. Orchestrator
-
-### Detailed Specification
-- **Purpose:** Coordinates the pipeline, manages state, handles errors.
-- **Implementation:** pure `asyncio`.
-
-```python
-import asyncio
-from pydantic import BaseModel
-from typing import Optional, List
-
-class AnalysisState(BaseModel):
     video_id: str
-    status: str = "PENDING"
-    metadata: Optional[VideoMetadata] = None
-    retention: Optional[RetentionData] = None
-    cliffs: List[CliffPoint] = []
-    analyses: List[CliffAnalysis] = []
-    report: Optional[ForensicReport] = None
-    error: Optional[str] = None
-
-class Orchestrator:
-    def __init__(self, keys: dict):
-        self.fetcher = DataFetcherAgent(keys['youtube'])
-        self.detector = CliffDetectorAgent()
-        self.analyzer = VideoAnalyzerAgent(keys['gemini'])
-        self.reporter = ReportGeneratorAgent(keys['groq'])
-
-    async def run_pipeline(self, video_id: str, oauth_token: str, file_path: str) -> AnalysisState:
-        state = AnalysisState(video_id=video_id)
-        
-        try:
-            state.status = "FETCHING_AND_UPLOADING"
-            # Phase 1: Parallel API fetch and Video Upload initialization
-            fetch_task = self.fetcher.run(video_id, oauth_token)
-            upload_task = self.analyzer.upload_video(file_path)
-            
-            (metadata, retention), file_name = await asyncio.gather(fetch_task, upload_task)
-            state.metadata = metadata
-            state.retention = retention
-            
-            state.status = "DETECTING_CLIFFS"
-            # Phase 2: Detect cliffs locally
-            state.cliffs = self.detector.run(retention, metadata)
-            
-            state.status = "ANALYZING_VIDEO"
-            # Phase 3: Wait for video to be ACTIVE, then analyze
-            # (Note: upload_video already polled for ACTIVE state in our implementation)
-            state.analyses = await self.analyzer.run(file_path, state.cliffs) # Modified to use file_name internally
-            
-            state.status = "GENERATING_REPORT"
-            # Phase 4: Final generation
-            state.report = await self.reporter.run(state.metadata, state.cliffs, state.analyses)
-            
-            state.status = "COMPLETED"
-            
-        except Exception as e:
-            state.status = "FAILED"
-            state.error = str(e)
-            
-        return state
+    overall_health_score: int
+    executive_summary: str
+    cliff_analyses: List[CliffAnalysis] # Re-uses model from AnalysisState
+    prescriptions: List[str]
 ```
 
 ---
 
-## 9. LLM Router / Fallback Strategy
+## 9. Why Pure `asyncio` Over Frameworks
 
-To ensure reliability, the system implements a routing and fallback strategy based on the Sept 2026 availability on Groq and Vertex AI.
+Cutpoint intentionally avoids heavy agent frameworks like LangGraph, CrewAI, or AutoGen.
 
-1. **Multimodal Analysis:** 
-   - **Primary:** Gemini 3.8 Flash (via Vertex AI)
-   - **Fallback:** If Gemini fails or hits quotas, fallback to `qwen/qwen3-vl-32b-instruct` on Groq (if visual) or extract audio via `whisper-large-v3` and pass text to GPT-OSS 120B.
-2. **Report Generation:**
-   - **Primary:** `openai/gpt-oss-20b` (fastest structured output).
-   - **Fallback:** `groq/compound-mini` (fast single tool invocation to parse schema).
-3. **Chat Agent:**
-   - **Primary:** `openai/gpt-oss-120b` (best reasoning).
-   - **Fallback:** `groq/compound` (agentic fallback if deep reasoning pipeline fails).
-
-Rate limit errors (429) trigger a 3-second backoff and a swap to the fallback model on the second attempt.
-
----
-
-## 10. Inter-Agent Communication
-
-Because we are not using a framework like CrewAI, agents do not send "messages" to each other directly. Instead, data flows strictly through the **Orchestrator** using a typed shared state (`AnalysisState`). 
-
-- **Data Flow:** Function Returns -> Orchestrator -> Function Arguments.
-- **Benefits:** This guarantees deterministic execution. Agent 4 cannot start until Agent 3 returns its strictly-typed Pydantic list.
-- **Traceability:** The `AnalysisState` object acts as a complete snapshot of the system at any given point, which can easily be serialized to Supabase PostgreSQL or logged to a dashboard.
+1.  **No Abstraction Tax:** Frameworks often obfuscate the underlying control flow. By using pure Python `asyncio`, the execution path is perfectly transparent, making it vastly easier to debug complex multi-agent interactions during a time-constrained hackathon.
+2.  **Speed:** Pure `asyncio` allows for maximal concurrency without the overhead of framework state management. Phase 1 (Ingestion) and Phase 2 (Math) run concurrently, and Phase 3 (Investigation) fans out massively across all identified cliffs.
+3.  **True Agency via Code:** We don't rely on a framework to simulate agency. Agency is built into the prompt design and the asynchronous while-loops (Perception-Action-Reflection) coded directly into the agent classes. The agents are self-contained logical units communicating over standard Python async queues.
