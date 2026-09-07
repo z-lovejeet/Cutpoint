@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { getYouTubeAuthUrl } from "@/lib/api";
 import type { VideoListItem } from "@/types/database";
 
 interface VideoSelectorProps {
@@ -72,7 +73,7 @@ export function VideoSelector({
         </div>
         <div className="pt-2 flex items-center justify-center gap-3 flex-wrap">
           <a
-            href={`http://localhost:8000/api/v1/auth/youtube${userId ? `?user_id=${userId}` : ""}`}
+            href={getYouTubeAuthUrl(userId)}
             className="inline-flex"
           >
             <Button
