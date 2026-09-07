@@ -1,17 +1,47 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 export default function AuthScene() {
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 24;
+      const y = (e.clientY / window.innerHeight - 0.5) * 24;
+      setMousePos({ x, y });
+    };
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-background-base">
-      {/* Subtle warm dot grid */}
-      <div className="absolute inset-0 bg-subtle-grid opacity-60" />
+      {/* Editorial paper grid */}
+      <div className="absolute inset-0 bg-editorial-grid opacity-50" />
 
-      {/* Cozy soft ambient lighting (Warm Amber & Indigo) */}
-      <div className="absolute -top-32 -left-32 w-[520px] h-[520px] bg-gradient-to-br from-indigo-200/40 via-purple-100/30 to-transparent rounded-full blur-[120px] animate-pulse-subtle" />
-      <div className="absolute -bottom-32 -right-32 w-[520px] h-[520px] bg-gradient-to-tl from-amber-100/50 via-sky-100/30 to-transparent rounded-full blur-[120px] animate-pulse-subtle" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-indigo-50/50 rounded-full blur-[140px]" />
+      {/* Warm Ambient Architectural Lighting (Terracotta, Warm Amber & Cream) */}
+      <div
+        style={{
+          transform: `translate(${mousePos.x * 0.8}px, ${mousePos.y * 0.8}px)`,
+          transition: "transform 0.25s ease-out",
+        }}
+        className="absolute -top-36 -left-36 w-[560px] h-[560px] bg-gradient-to-br from-orange-200/25 via-amber-100/20 to-transparent rounded-full blur-[130px] animate-pulse-subtle"
+      />
+      <div
+        style={{
+          transform: `translate(${-mousePos.x * 0.7}px, ${-mousePos.y * 0.7}px)`,
+          transition: "transform 0.25s ease-out",
+        }}
+        className="absolute -bottom-36 -right-36 w-[560px] h-[560px] bg-gradient-to-tl from-amber-200/30 via-orange-100/20 to-transparent rounded-full blur-[130px] animate-pulse-subtle"
+      />
+      <div
+        style={{
+          transform: `translate(-50%, -50%) translate(${mousePos.x * 0.4}px, ${mousePos.y * 0.4}px)`,
+          transition: "transform 0.3s ease-out",
+        }}
+        className="absolute top-1/2 left-1/2 w-[720px] h-[440px] bg-amber-50/60 rounded-full blur-[150px]"
+      />
     </div>
   );
 }
