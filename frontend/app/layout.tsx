@@ -21,7 +21,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Cutpoint — AI Forensic Retention Intelligence for Creators",
+  title: "Cutpoint — AI Video Retention Intelligence for Creators",
   description:
     "Pinpoint the cuts that cost you viewers. Cutpoint uses multimodal AI and calculus to diagnose YouTube audience drop-offs.",
 };
@@ -34,9 +34,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}
+      className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}
     >
-      <body className="min-h-screen bg-background-base text-text-primary antialiased selection:bg-primary/30 selection:text-white">
+      <body className="min-h-screen bg-background-base text-text-primary antialiased selection:bg-primary/10 selection:text-primary">
         {children}
       </body>
     </html>
