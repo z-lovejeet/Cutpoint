@@ -6,7 +6,12 @@ export async function POST(request: Request) {
   await supabase.auth.signOut();
 
   const { origin } = new URL(request.url);
-  return NextResponse.redirect(`${origin}/sign-in`, {
+  const response = NextResponse.redirect(`${origin}/sign-in`, {
     status: 302,
   });
+
+  // Clear guest session cookie
+  response.cookies.delete("cutpoint_guest_session");
+
+  return response;
 }
