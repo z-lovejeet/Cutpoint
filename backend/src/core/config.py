@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Cutpoint API"
     VERSION: str = "0.1.0"
     PORT: int = 8000
+    FRONTEND_URL: str = "http://localhost:3000"
     BACKEND_CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     # Supabase Auth & DB
