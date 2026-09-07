@@ -41,21 +41,37 @@ class SupabaseService:
         )
         return response.data
 
+    def delete_user_channels(self, user_id: str, channel_id: Optional[str] = None) -> bool:
+        """Deletes connected YouTube channel(s) for a user."""
+        try:
+            if channel_id:
+                # Support deleting either by primary UUID or YouTube channel_id string (UC...)
+                self.client.table("youtube_channels").delete().eq("user_id", user_id).eq("channel_id", channel_id).execute()
+                self.client.table("youtube_channels").delete().eq("user_id", user_id).eq("id", channel_id).execute()
+            else:
+                self.client.table("youtube_channels").delete().eq("user_id", user_id).execute()
+            return True
+        except Exception:
+            return False
+
     def create_analysis_record(
         self,
         user_id: str,
         video_id: str,
         video_title: str,
         channel_id: Optional[str] = None,
+        analysis_id: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """Creates a pending analysis record."""
-        payload = {
+        payload: Dict[str, Any] = {
             "user_id": user_id,
             "video_id": video_id,
             "video_title": video_title,
             "channel_id": channel_id,
             "status": "PENDING",
         }
+        if analysis_id:
+            payload["id"] = analysis_id
         response = self.client.table("analyses").insert(payload).execute()
         return response.data[0] if response.data else None
 
@@ -63,11 +79,14 @@ class SupabaseService:
         self,
         analysis_id: str,
         status: str,
+        video_title: Optional[str] = None,
         report_data: Optional[Dict[str, Any]] = None,
         error_message: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """Updates the status and report payload of an analysis run."""
         payload: Dict[str, Any] = {"status": status}
+        if video_title:
+            payload["video_title"] = video_title
         if report_data is not None:
             payload["report_data"] = report_data
         if error_message is not None:
