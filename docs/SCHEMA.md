@@ -54,6 +54,8 @@ class CliffPoint(BaseModel):
     retention_before: float = Field(..., ge=0, le=1.0, description="Retention right before the drop")
     retention_after: float = Field(..., ge=0, le=1.0, description="Retention right after the drop")
     position_in_video: str = Field(..., description="'early', 'middle', or 'late'")
+    detection_methods: List[str] = Field(default_factory=list, description="Algorithms that detected this cliff (e.g., ['derivative', 'z-score'])")
+    detection_confidence: float = Field(default=1.0, ge=0, le=1.0, description="Confidence score from the Cliff Detector Agent")
 
     @validator("drop_percentage")
     def drop_must_be_significant(cls, v):
@@ -61,26 +63,67 @@ class CliffPoint(BaseModel):
             raise ValueError("Drop percentage must be at least 5% to be considered a cliff")
         return v
 
+class Evidence(BaseModel):
+    source_agent: str = Field(..., description="Agent that provided this evidence")
+    description: str = Field(..., description="Description of the evidence")
+    confidence: float = Field(..., ge=0, le=1.0)
+    data_reference: Optional[str] = Field(None, description="Pointer to specific frames, timestamps, or tool outputs")
+
+class InvestigationPass(BaseModel):
+    agent_name: str = Field(..., description="Name of the agent conducting the pass")
+    hypothesis: str = Field(..., description="Hypothesis tested in this pass")
+    evidence_gathered: List[Evidence] = Field(default_factory=list)
+    conclusion: str = Field(..., description="Agent's conclusion after this pass")
+
 class CliffAnalysis(BaseModel):
     cliff: CliffPoint = Field(..., description="The detected cliff data")
+    investigation_passes: List[InvestigationPass] = Field(default_factory=list, description="Record of agent investigation loops")
+    evidence_chain: List[Evidence] = Field(default_factory=list, description="Cumulative evidence collected")
     root_cause: str = Field(..., description="AI-determined root cause of the drop")
     visual_analysis: str = Field(..., description="Analysis of on-screen elements")
     audio_analysis: str = Field(..., description="Analysis of sound, tone, or music changes")
     pacing_analysis: str = Field(..., description="Analysis of edit speed and flow")
     script_analysis: str = Field(..., description="Analysis of spoken content and hooks")
-    confidence_score: float = Field(..., ge=0, le=1.0, description="AI confidence in this assessment")
+    confidence_score: float = Field(..., ge=0, le=1.0, description="AI confidence in this assessment per finding")
+    critic_approved: bool = Field(default=False, description="Whether the Critic Agent approved these findings")
     recommendations: List[str] = Field(default_factory=list, description="Actionable tips to prevent this drop")
+
+class HealthScore(BaseModel):
+    overall: float = Field(..., ge=0, le=100.0)
+    content_score: float = Field(..., ge=0, le=100.0)
+    pacing_score: float = Field(..., ge=0, le=100.0)
+    audio_score: float = Field(..., ge=0, le=100.0)
+    visual_score: float = Field(..., ge=0, le=100.0)
+    hook_score: float = Field(..., ge=0, le=100.0)
+
+class ActionItem(BaseModel):
+    priority: str = Field(..., description="HIGH, MEDIUM, LOW")
+    category: str = Field(..., description="e.g., VISUAL, SCRIPT, PACING")
+    description: str = Field(..., description="The actionable advice")
 
 class ForensicReport(BaseModel):
     report_id: str = Field(..., description="Unique ID for this report")
     video: VideoMetadata = Field(..., description="Metadata of the analyzed video")
+    health_scores: HealthScore = Field(..., description="Detailed health score breakdown")
     overall_health_score: float = Field(..., ge=0, le=100.0, description="Overall retention health score (0-100)")
     executive_summary: str = Field(..., description="High-level summary of the video's retention performance")
-    cliff_reports: List[CliffAnalysis] = Field(default_factory=list, description="Detailed analysis of each detected cliff")
-    action_items: List[str] = Field(default_factory=list, description="Top-level actionable improvements")
+    verified_findings: List[CliffAnalysis] = Field(default_factory=list, description="Detailed analysis of each detected cliff, approved by the Critic")
+    action_items: List[ActionItem] = Field(default_factory=list, description="Top-level actionable improvements")
     positive_highlights: List[str] = Field(default_factory=list, description="Things done right (areas of flat/rising retention)")
     comparison_data: Optional[dict] = Field(None, description="Optional benchmark data against channel average")
     generated_at: datetime = Field(default_factory=datetime.utcnow, description="Timestamp of report generation")
+
+class AgentMessage(BaseModel):
+    sender: str = Field(..., description="Agent sending the message")
+    recipient: str = Field(..., description="Agent receiving the message")
+    content: str = Field(..., description="The message content")
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    context_id: Optional[str] = Field(None, description="e.g., a specific cliff_id")
+
+class InvestigationPlan(BaseModel):
+    cliffs_to_investigate: List[str] = Field(..., description="List of cliff IDs to investigate")
+    priority: str = Field(default="magnitude", description="Investigation priority strategy")
+    required_confidence: float = Field(default=0.8, description="Confidence threshold for Critic approval")
 
 class ChatMessage(BaseModel):
     role: str = Field(..., description="'user' or 'assistant'")
@@ -101,8 +144,9 @@ class AnalysisStatus(str, Enum):
     PENDING = "PENDING"
     FETCHING_DATA = "FETCHING_DATA"
     DETECTING_CLIFFS = "DETECTING_CLIFFS"
-    ANALYZING_VIDEO = "ANALYZING_VIDEO"
-    GENERATING_REPORT = "GENERATING_REPORT"
+    INVESTIGATING = "INVESTIGATING"
+    DEBATING = "DEBATING"
+    SYNTHESIZING_REPORT = "SYNTHESIZING_REPORT"
     COMPLETE = "COMPLETE"
     ERROR = "ERROR"
 
@@ -110,6 +154,10 @@ class AnalysisState(BaseModel):
     status: AnalysisStatus = Field(default=AnalysisStatus.PENDING, description="Current status of the pipeline")
     current_phase: str = Field(..., description="Human-readable description of current work")
     progress_percentage: int = Field(default=0, ge=0, le=100, description="Completion percentage (0-100)")
+    active_agents: List[str] = Field(default_factory=list, description="List of agents currently working")
+    investigation_plan: Optional[InvestigationPlan] = Field(None, description="The supervisor's current plan")
+    debate_rounds: int = Field(default=0, description="Number of debate rounds completed")
+    agent_messages: List[AgentMessage] = Field(default_factory=list, description="Inter-agent communication history")
     partial_results: Optional[dict] = Field(default=None, description="Interim data (e.g., found cliffs before AI analysis)")
     error_message: Optional[str] = Field(default=None, description="Details if status is ERROR")
 
@@ -169,29 +217,78 @@ export interface CliffPoint {
   retentionBefore: number;
   retentionAfter: number;
   positionInVideo: 'early' | 'middle' | 'late';
+  detectionMethods: string[];
+  detectionConfidence: number;
+}
+
+export interface Evidence {
+  sourceAgent: string;
+  description: string;
+  confidence: number;
+  dataReference?: string;
+}
+
+export interface InvestigationPass {
+  agentName: string;
+  hypothesis: string;
+  evidenceGathered: Evidence[];
+  conclusion: string;
 }
 
 export interface CliffAnalysis {
   cliff: CliffPoint;
+  investigationPasses: InvestigationPass[];
+  evidenceChain: Evidence[];
   rootCause: string;
   visualAnalysis: string;
   audioAnalysis: string;
   pacingAnalysis: string;
   scriptAnalysis: string;
   confidenceScore: number;
+  criticApproved: boolean;
   recommendations: string[];
+}
+
+export interface HealthScore {
+  overall: number;
+  contentScore: number;
+  pacingScore: number;
+  audioScore: number;
+  visualScore: number;
+  hookScore: number;
+}
+
+export interface ActionItem {
+  priority: string;
+  category: string;
+  description: string;
 }
 
 export interface ForensicReport {
   reportId: string;
   video: VideoMetadata;
+  healthScores: HealthScore;
   overallHealthScore: number;
   executiveSummary: string;
-  cliffReports: CliffAnalysis[];
-  actionItems: string[];
+  verifiedFindings: CliffAnalysis[];
+  actionItems: ActionItem[];
   positiveHighlights: string[];
   comparisonData?: Record<string, any>;
   generatedAt: string; // ISO 8601 string
+}
+
+export interface AgentMessage {
+  sender: string;
+  recipient: string;
+  content: string;
+  timestamp: string; // ISO 8601 string
+  contextId?: string;
+}
+
+export interface InvestigationPlan {
+  cliffsToInvestigate: string[];
+  priority: string;
+  requiredConfidence: number;
 }
 
 export interface ChatMessage {
@@ -209,8 +306,9 @@ export enum AnalysisStatus {
   PENDING = 'PENDING',
   FETCHING_DATA = 'FETCHING_DATA',
   DETECTING_CLIFFS = 'DETECTING_CLIFFS',
-  ANALYZING_VIDEO = 'ANALYZING_VIDEO',
-  GENERATING_REPORT = 'GENERATING_REPORT',
+  INVESTIGATING = 'INVESTIGATING',
+  DEBATING = 'DEBATING',
+  SYNTHESIZING_REPORT = 'SYNTHESIZING_REPORT',
   COMPLETE = 'COMPLETE',
   ERROR = 'ERROR',
 }
@@ -219,6 +317,10 @@ export interface AnalysisState {
   status: AnalysisStatus;
   currentPhase: string;
   progressPercentage: number;
+  activeAgents: string[];
+  investigationPlan?: InvestigationPlan;
+  debateRounds: number;
+  agentMessages: AgentMessage[];
   partialResults?: Record<string, any>;
   errorMessage?: string;
 }
@@ -286,7 +388,7 @@ ALTER TABLE youtube_channels ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage their channels" ON youtube_channels FOR ALL USING (auth.uid() = user_id);
 
 -- ANALYSES TABLE
-CREATE TYPE analysis_status AS ENUM ('PENDING', 'FETCHING_DATA', 'DETECTING_CLIFFS', 'ANALYZING_VIDEO', 'GENERATING_REPORT', 'COMPLETE', 'ERROR');
+CREATE TYPE analysis_status AS ENUM ('PENDING', 'FETCHING_DATA', 'DETECTING_CLIFFS', 'INVESTIGATING', 'DEBATING', 'SYNTHESIZING_REPORT', 'COMPLETE', 'ERROR');
 
 CREATE TABLE analyses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -390,9 +492,17 @@ sequenceDiagram
     "published_at": "2026-08-15T14:30:00Z",
     "thumbnail_url": "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg"
   },
+  "health_scores": {
+    "overall": 72.5,
+    "content_score": 80.0,
+    "pacing_score": 65.0,
+    "audio_score": 75.0,
+    "visual_score": 70.0,
+    "hook_score": 85.0
+  },
   "overall_health_score": 72.5,
   "executive_summary": "The video performs well in the first 2 minutes but suffers a critical drop during the sponsor read at 3:15, and a secondary drop when transitioning to the B-roll montage at 6:40.",
-  "cliff_reports": [
+  "verified_findings": [
     {
       "cliff": {
         "timestamp_start": 195,
@@ -401,14 +511,46 @@ sequenceDiagram
         "severity": "CRITICAL",
         "retention_before": 0.65,
         "retention_after": 0.465,
-        "position_in_video": "middle"
+        "position_in_video": "middle",
+        "detection_methods": ["derivative", "z-score"],
+        "detection_confidence": 0.98
       },
+      "investigation_passes": [
+        {
+          "agent_name": "Multimodal Forensic Agent",
+          "hypothesis": "Visual stagnancy during sponsor read",
+          "evidence_gathered": [
+            {
+              "source_agent": "Multimodal Forensic Agent",
+              "description": "0 cuts detected over 15 seconds",
+              "confidence": 0.95,
+              "data_reference": "frames 5850-6300"
+            }
+          ],
+          "conclusion": "High visual stagnancy confirmed."
+        }
+      ],
+      "evidence_chain": [
+        {
+          "source_agent": "Multimodal Forensic Agent",
+          "description": "0 cuts detected over 15 seconds",
+          "confidence": 0.95,
+          "data_reference": "frames 5850-6300"
+        },
+        {
+          "source_agent": "Audio & Cadence Agent",
+          "description": "Background music cuts out entirely",
+          "confidence": 0.99,
+          "data_reference": "audio track 3:15-3:30"
+        }
+      ],
       "root_cause": "Abrupt transition to static sponsor read without a hook.",
       "visual_analysis": "Camera switches to a wide, static shot. The lighting becomes flat and motion stops entirely for 15 seconds.",
       "audio_analysis": "Background music cuts out entirely. Voice tone becomes notably monotonous compared to the energetic intro.",
       "pacing_analysis": "The fast cut rate (1 cut/2s) slows to 0 cuts for the entire 15 second segment.",
       "script_analysis": "The phrasing 'Before we get into it, I want to thank...' is a known trigger phrase that causes viewers to double-tap to skip.",
       "confidence_score": 0.94,
+      "critic_approved": true,
       "recommendations": [
         "Integrate the sponsor product into the active scene rather than cutting to a static shot.",
         "Maintain background music through the transition.",
@@ -417,8 +559,16 @@ sequenceDiagram
     }
   ],
   "action_items": [
-    "Overhaul sponsor integration strategy to be more seamless.",
-    "Add more dynamic movement to B-roll montages."
+    {
+      "priority": "HIGH",
+      "category": "PACING",
+      "description": "Overhaul sponsor integration strategy to be more seamless."
+    },
+    {
+      "priority": "MEDIUM",
+      "category": "VISUAL",
+      "description": "Add more dynamic movement to B-roll montages."
+    }
   ],
   "positive_highlights": [
     "Intro hook successfully retained 85% of viewers through the first minute.",
