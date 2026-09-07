@@ -1,16 +1,12 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useState } from "react";
-import { Mail, Lock, ArrowRight, AlertCircle } from "lucide-react";
+import { Mail, Lock, ArrowRight, AlertCircle, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AuthCard from "@/components/auth/AuthCard";
-import GoogleOAuthButton from "@/components/auth/GoogleOAuthButton";
-
-const AuthScene = dynamic(() => import("@/components/canvas/AuthScene"), {
-  ssr: false,
-});
+import GitHubOAuthButton from "@/components/auth/GitHubOAuthButton";
 
 function SignInContent() {
   const router = useRouter();
@@ -52,87 +48,97 @@ function SignInContent() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center px-4 py-12 bg-background-base overflow-hidden">
-      <AuthScene />
+    <AuthCard
+      title="Welcome Back"
+      subtitle="Sign in to your studio to analyze your viewer retention drops"
+      footerText="Don't have a Cutpoint account?"
+      footerLinkText="Create one here"
+      footerLinkHref="/register"
+    >
+      <div className="space-y-6">
+        {/* GitHub OAuth */}
+        <GitHubOAuthButton next={next} label="Sign in with GitHub" />
 
-      <AuthCard
-        title="Welcome Back"
-        subtitle="Sign in to your studio to analyze your viewer retention drops"
-        footerText="Don't have a Cutpoint account?"
-        footerLinkText="Create one here"
-        footerLinkHref="/register"
-      >
-        <div className="space-y-6">
-          {/* Google OAuth */}
-          <GoogleOAuthButton next={next} label="Sign in with Google" />
+        {/* 1-Click Guest Pass for Judges */}
+        <div className="pt-0.5">
+          <Link
+            href={`/auth/guest?next=${encodeURIComponent(next)}`}
+            className="w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl border border-accent/30 bg-orange-50/70 hover:bg-orange-100/80 text-accent font-medium text-xs font-mono shadow-cozy transition-all cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-accent" />
+            <span>Enter as Guest (Judge &amp; Evaluator Sandbox)</span>
+          </Link>
+          <p className="text-[11px] font-mono text-text-tertiary text-center pt-1.5">
+            1-click instant access without credentials or signup
+          </p>
+        </div>
 
-          {/* Divider */}
-          <div className="relative flex items-center justify-center">
-            <div className="w-full border-t border-black/[0.08]" />
-            <span className="bg-white px-3 text-[11px] font-mono uppercase text-text-tertiary">
-              Or with email
-            </span>
-            <div className="w-full border-t border-black/[0.08]" />
+        {/* Divider */}
+        <div className="relative flex items-center justify-center my-1">
+          <div className="flex-1 border-t border-black/[0.08]" />
+          <span className="shrink-0 whitespace-nowrap bg-white px-3.5 text-[11px] font-mono uppercase tracking-wider text-text-tertiary select-none">
+            Or continue with email
+          </span>
+          <div className="flex-1 border-t border-black/[0.08]" />
+        </div>
+
+        {/* Error Banner */}
+        {errorMsg && (
+          <div className="flex items-center space-x-2.5 p-3.5 rounded-xl bg-danger/10 border border-danger/20 text-danger text-xs">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {/* Email Password Form */}
+        <form onSubmit={handleEmailSignIn} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-mono text-text-secondary font-medium">
+              Email Address
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="creator@youtube.com"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background-base/60 border border-black/[0.09] text-text-primary placeholder:text-text-disabled text-sm focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 transition-all"
+              />
+            </div>
           </div>
 
-          {/* Error Banner */}
-          {errorMsg && (
-            <div className="flex items-center space-x-2.5 p-3.5 rounded-xl bg-danger/10 border border-danger/20 text-danger text-xs">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-
-          {/* Email Password Form */}
-          <form onSubmit={handleEmailSignIn} className="space-y-4">
-            <div className="space-y-1.5">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
               <label className="text-xs font-mono text-text-secondary font-medium">
-                Email Address
+                Password
               </label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="creator@youtube.com"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background-base/60 border border-black/[0.09] text-text-primary placeholder:text-text-disabled text-sm focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 transition-all"
-                />
-              </div>
             </div>
-
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-mono text-text-secondary font-medium">
-                  Password
-                </label>
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background-base/60 border border-black/[0.09] text-text-primary placeholder:text-text-disabled text-sm focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 transition-all"
-                />
-              </div>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background-base/60 border border-black/[0.09] text-text-primary placeholder:text-text-disabled text-sm focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 transition-all"
+              />
             </div>
+          </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-primary hover:bg-primary-light text-white text-sm font-medium shadow-sm transition-all duration-200 active:scale-[0.99] disabled:opacity-60"
-            >
-              <span>{isLoading ? "Authenticating..." : "Sign In to Studio"}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </form>
-        </div>
-      </AuthCard>
-    </div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-primary hover:bg-primary-light text-white text-sm font-medium shadow-sm transition-all duration-200 active:scale-[0.99] disabled:opacity-60 cursor-pointer"
+          >
+            <span>{isLoading ? "Authenticating..." : "Sign In to Studio"}</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </form>
+      </div>
+    </AuthCard>
   );
 }
 
@@ -140,7 +146,7 @@ export default function SignInPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-background-base text-text-tertiary font-mono text-xs">
+        <div className="flex items-center justify-center p-8 text-text-tertiary font-mono text-xs">
           Loading sign in...
         </div>
       }
