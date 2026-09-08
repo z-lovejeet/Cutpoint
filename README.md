@@ -601,7 +601,7 @@ Cutpoint solves the biggest unsolved problem in creator analytics: **the gap bet
 
 <div align="center">
 
-**Built with 🔥 by Lovejeet**
+**Built by Lovejeet Singh**
 
 [![Live Demo](https://img.shields.io/badge/Try_It_Now-cutpoint.vercel.app-D95A2B?style=for-the-badge)](https://cutpoint.vercel.app)
 
