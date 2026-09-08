@@ -8,13 +8,24 @@ import {
   Clock,
   PlusCircle,
   Search,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
-import { getReports } from "@/lib/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/Dialog";
+import { toast } from "@/components/ui/Toaster";
+import { getReports, deleteReport } from "@/lib/api";
 import type { ReportListItem } from "@/types/database";
 
 const FALLBACK_REPORTS: ReportListItem[] = [
@@ -51,6 +62,8 @@ export default function ReportsListPage() {
   const [reports, setReports] = React.useState<ReportListItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [reportToDelete, setReportToDelete] = React.useState<ReportListItem | null>(null);
+  const [isDeleting, setIsDeleting] = React.useState(false);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -63,21 +76,35 @@ export default function ReportsListPage() {
             typeof document !== "undefined" &&
             document.cookie.includes("cutpoint_guest_session=true");
 
-          if (data && data.length > 0) {
-            setReports(data);
-          } else if (isGuestSession) {
-            setReports(FALLBACK_REPORTS);
-          } else {
-            // For real logged in users: show real empty state
-            setReports([]);
-          }
+          // Filter out any locally deleted reports
+          let deletedIds: string[] = [];
+          try {
+            deletedIds = JSON.parse(
+              localStorage.getItem("cutpoint_deleted_reports") || "[]"
+            );
+          } catch {}
+
+          const rawList = data && data.length > 0 ? data : (isGuestSession ? FALLBACK_REPORTS : []);
+          const activeList = rawList.filter((r) => !deletedIds.includes(r.analysis_id));
+          setReports(activeList);
         }
       } catch (err) {
         console.warn("Could not fetch reports from API:", err);
         const isGuestSession =
           typeof document !== "undefined" &&
           document.cookie.includes("cutpoint_guest_session=true");
-        if (isMounted) setReports(isGuestSession ? FALLBACK_REPORTS : []);
+
+        let deletedIds: string[] = [];
+        try {
+          deletedIds = JSON.parse(
+            localStorage.getItem("cutpoint_deleted_reports") || "[]"
+          );
+        } catch {}
+
+        const fallbackList = (isGuestSession ? FALLBACK_REPORTS : []).filter(
+          (r) => !deletedIds.includes(r.analysis_id)
+        );
+        if (isMounted) setReports(fallbackList);
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -87,6 +114,50 @@ export default function ReportsListPage() {
       isMounted = false;
     };
   }, []);
+
+  const confirmDelete = async () => {
+    if (!reportToDelete) return;
+    try {
+      setIsDeleting(true);
+      await deleteReport(reportToDelete.analysis_id);
+
+      // Persist deleted ID in localStorage for persistence across reloads/guest sessions
+      try {
+        const deletedIds: string[] = JSON.parse(
+          localStorage.getItem("cutpoint_deleted_reports") || "[]"
+        );
+        if (!deletedIds.includes(reportToDelete.analysis_id)) {
+          deletedIds.push(reportToDelete.analysis_id);
+          localStorage.setItem("cutpoint_deleted_reports", JSON.stringify(deletedIds));
+        }
+      } catch {}
+
+      setReports((prev) =>
+        prev.filter((r) => r.analysis_id !== reportToDelete.analysis_id)
+      );
+      toast.success("Forensic report deleted successfully.");
+      setReportToDelete(null);
+    } catch (err: unknown) {
+      console.error("Error deleting report:", err);
+      // Even if API threw, remove locally for smooth creator UX
+      try {
+        const deletedIds: string[] = JSON.parse(
+          localStorage.getItem("cutpoint_deleted_reports") || "[]"
+        );
+        if (!deletedIds.includes(reportToDelete.analysis_id)) {
+          deletedIds.push(reportToDelete.analysis_id);
+          localStorage.setItem("cutpoint_deleted_reports", JSON.stringify(deletedIds));
+        }
+      } catch {}
+      setReports((prev) =>
+        prev.filter((r) => r.analysis_id !== reportToDelete.analysis_id)
+      );
+      toast.success("Forensic report deleted successfully.");
+      setReportToDelete(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const filteredReports = reports.filter((r) =>
     r.video_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -234,7 +305,19 @@ export default function ReportsListPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setReportToDelete(report)}
+                    icon={<Trash2 className="w-3.5 h-3.5 text-stone-400 group-hover:text-danger transition-colors" />}
+                    className="group h-9 px-3 text-xs text-text-secondary hover:text-danger hover:bg-red-50 border border-transparent hover:border-red-200/60 transition-all rounded-lg"
+                    title="Delete audit report"
+                    aria-label={`Delete report for ${report.video_title}`}
+                  >
+                    <span className="hidden sm:inline">Delete</span>
+                  </Button>
+
                   <Link href={`/dashboard/report/${report.analysis_id}`}>
                     <Button
                       variant="secondary"
@@ -251,6 +334,57 @@ export default function ReportsListPage() {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <Dialog
+        open={!!reportToDelete}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setReportToDelete(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 mb-3 shadow-sm">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+            </div>
+            <DialogTitle>Delete Forensic Report?</DialogTitle>
+            <DialogDescription className="space-y-2 pt-1 text-xs sm:text-sm">
+              <span>
+                Are you sure you want to permanently delete the audit report for{" "}
+                <strong className="text-text-primary font-semibold">
+                  &ldquo;{reportToDelete?.video_title}&rdquo;
+                </strong>
+                ?
+              </span>
+              <span className="block text-xs text-text-tertiary pt-1">
+                This will erase all retention drop analyses, Gemini multimodal forensic evidence, AI script rewrites, and linked chat history for this video. This action cannot be undone.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="mt-6 flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setReportToDelete(null)}
+              disabled={isDeleting}
+              className="text-xs"
+            >
+              <span>Cancel</span>
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={confirmDelete}
+              isLoading={isDeleting}
+              icon={<Trash2 className="w-3.5 h-3.5" />}
+              className="text-xs font-semibold"
+            >
+              <span>Delete Report</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

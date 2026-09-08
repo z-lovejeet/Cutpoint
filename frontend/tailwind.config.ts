@@ -50,6 +50,10 @@ const config: Config = {
         heading: ["var(--font-space-grotesk)", "system-ui", "sans-serif"],
         mono: ["var(--font-jetbrains-mono)", "monospace"],
       },
+      spacing: {
+        "4.5": "1.125rem",
+        "8.5": "2.125rem",
+      },
       boxShadow: {
         cozy: "0 1px 2px 0 rgba(28, 25, 23, 0.04), 0 8px 24px -4px rgba(28, 25, 23, 0.04)",
         card: "0 1px 3px 0 rgba(28, 25, 23, 0.04), 0 16px 36px -6px rgba(28, 25, 23, 0.06)",

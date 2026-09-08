@@ -7,6 +7,8 @@ import type {
   SystemStatus,
   VideoListItem,
   YouTubeAuthResponse,
+  ScriptRewriteRequest,
+  ScriptRewriteResponse,
 } from "@/types/database";
 
 const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -119,6 +121,26 @@ export async function getReports(): Promise<ReportListItem[]> {
   if (!res.ok) {
     const errorText = await res.text();
     throw new Error(`Failed to fetch reports (${res.status}): ${errorText}`);
+  }
+
+  return res.json();
+}
+
+/**
+ * Permanently deletes a forensic retention report from the database.
+ */
+export async function deleteReport(
+  analysisId: string
+): Promise<{ success: boolean; message: string }> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/reports/${encodeURIComponent(analysisId)}`, {
+    method: "DELETE",
+    headers,
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to delete report (${res.status}): ${errorText}`);
   }
 
   return res.json();
@@ -349,4 +371,53 @@ export async function getChatHistory(analysisId: string): Promise<ChatMessage[]>
     return [];
   }
 }
+
+/**
+  * Generates an AI retention script rewrite (Hook, Cliff Part, or Whole Script)
+  * and automatically syncs it with the Supabase database.
+  */
+export async function rewriteScript(
+  analysisId: string,
+  request: ScriptRewriteRequest
+): Promise<ScriptRewriteResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/reports/${analysisId}/rewrite`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(request),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Script rewrite generation failed (${res.status}): ${errorText}`);
+  }
+
+  return res.json();
+}
+
+/**
+  * Fetches formatted NLE timeline markers (DaVinci CSV, Premiere CSV, EDL, YouTube chapters).
+  */
+export async function exportTimelineMarkers(
+  analysisId: string,
+  format: string,
+  fps: number = 30.0
+): Promise<string> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(
+    `${API_BASE}/reports/${analysisId}/export/${format}?fps=${fps}`,
+    {
+      method: "GET",
+      headers,
+    }
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Export failed (${res.status}): ${errorText}`);
+  }
+
+  return res.text();
+}
+
 

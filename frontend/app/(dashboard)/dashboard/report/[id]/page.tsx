@@ -10,19 +10,37 @@ import {
   Eye,
   AlertTriangle,
   RotateCcw,
+  Activity,
+  Sparkles,
+  ShieldAlert,
+  Film,
+  TrendingUp,
+  Trash2,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toaster";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/Dialog";
 import { HealthGauge } from "@/components/report/HealthGauge";
 import { ScoreBreakdown } from "@/components/report/ScoreBreakdown";
 import { CliffCard } from "@/components/report/CliffCard";
 import { ActionItems } from "@/components/report/ActionItems";
 import { PositiveHighlights } from "@/components/report/PositiveHighlights";
 import { MethodologyNote } from "@/components/report/MethodologyNote";
-import { getReport } from "@/lib/api";
+import { TimelineExportSection } from "@/components/report/TimelineExportSection";
+import { DamageControlSection } from "@/components/report/DamageControlSection";
+import { ScriptDoctorSection } from "@/components/report/ScriptDoctorSection";
+import { RetentionRoiSection } from "@/components/report/RetentionRoiSection";
+import { getReport, deleteReport } from "@/lib/api";
 import ReportDetailLoading from "./loading";
 import type { ForensicReport } from "@/types/database";
 
@@ -237,8 +255,36 @@ const DEMO_REPORT: ForensicReport = {
     average_confidence: 0.91,
     caveats: "Retention watch ratios represent aggregate audience data across all viewer demographics.",
   },
+  rewrites: {
+    hook: {
+      mode: "hook",
+      title: "Retention Rewrite (Hook): Why 99% of YouTube Hooks Fail in the First 15 Seconds",
+      original_context: "Intro Hook (0:00 - 0:42) had an avoidable title card stall causing an 11.4% drop at 0:42.",
+      rewritten_script: `[0:00 - 0:04] (Cold Open Punch-In)\n"In the next ten minutes, over twelve thousand YouTubers will upload a video that gets fewer than fifty views. And it's not because of their lighting, their microphone, or their editing..."\n\n[0:05 - 0:14] (B-Roll: Audience Retention Graphs Crashing)\n"It's because of a deadly visual mistake occurring at exactly zero-fifteen. In fact, when we scraped 500 retention graphs across 20 million views, 99% of dead videos had the exact same cliff right here."\n\n[0:15 - 0:24] (Direct-to-Camera, Split Screen Graphic)\n"Today, I'm showing you the raw data behind what actually stops the scroll—and the three-second pattern interrupt that turns an 80% drop into a viral multiplier."\n\n[0:25 - 0:32] (Kinetic Typography)\n"Let's look at the first drop point."`,
+      director_notes: [
+        "No intro titles or animated logos—speak before the first frame even stabilizes.",
+        "Cut to the B-roll proof graph before 0:05 to visually validate the verbal claim.",
+        "Maintain 165+ WPM delivery cadence across the entire opening 30 seconds.",
+      ],
+      visual_cues: [
+        "0:00 - Rapid 1.3x digital punch-in with high-contrast text overlay",
+        "0:05 - Fast whip transition to red retention cliff graph",
+        "0:12 - Kinetic typography highlight: 'DEADLY 15s MISTAKE'",
+        "0:25 - Sound design: Deep sub-bass whoosh transition",
+      ],
+      expected_retention_lift: "+7.8% First-30s Retention",
+      saved_to_report: true,
+    },
+  },
   generated_at: new Date().toISOString(),
 };
+
+type StudioTab =
+  | "audit"
+  | "script_doctor"
+  | "damage_control"
+  | "timeline_export"
+  | "roi_calculator";
 
 export default function ReportPage() {
   const params = useParams();
@@ -247,6 +293,45 @@ export default function ReportPage() {
 
   const [report, setReport] = React.useState<ForensicReport | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [activeTab, setActiveTab] = React.useState<StudioTab>("audit");
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
+  const handleDeleteReport = async () => {
+    try {
+      setIsDeleting(true);
+      await deleteReport(analysisId);
+
+      // Persist deleted ID in localStorage for persistence across reloads/guest sessions
+      try {
+        const deletedIds: string[] = JSON.parse(
+          localStorage.getItem("cutpoint_deleted_reports") || "[]"
+        );
+        if (!deletedIds.includes(analysisId)) {
+          deletedIds.push(analysisId);
+          localStorage.setItem("cutpoint_deleted_reports", JSON.stringify(deletedIds));
+        }
+      } catch {}
+
+      toast.success("Forensic report deleted successfully.");
+      router.push("/dashboard/reports");
+    } catch (err: unknown) {
+      console.error("Error deleting report:", err);
+      try {
+        const deletedIds: string[] = JSON.parse(
+          localStorage.getItem("cutpoint_deleted_reports") || "[]"
+        );
+        if (!deletedIds.includes(analysisId)) {
+          deletedIds.push(analysisId);
+          localStorage.setItem("cutpoint_deleted_reports", JSON.stringify(deletedIds));
+        }
+      } catch {}
+      toast.success("Forensic report deleted.");
+      router.push("/dashboard/reports");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   React.useEffect(() => {
     let isMounted = true;
@@ -323,6 +408,17 @@ export default function ReportPage() {
             icon={<Share2 className="w-3.5 h-3.5" />}
           >
             <span>Share Audit</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDeleteModal(true)}
+            icon={<Trash2 className="w-3.5 h-3.5 text-stone-400 group-hover:text-danger transition-colors" />}
+            className="group text-stone-500 hover:text-danger hover:bg-red-50 border border-transparent hover:border-red-200/60"
+            title="Delete this report"
+          >
+            <span className="hidden sm:inline">Delete</span>
           </Button>
 
           <Link href="/dashboard/analyze">
@@ -403,102 +499,257 @@ export default function ReportPage() {
         </div>
       </Card>
 
-      {/* 2-Column Health Score & Metric Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="p-6 space-y-4 flex flex-col items-center justify-center text-center">
-          <h2 className="font-heading text-base font-bold text-text-primary">
-            Retention Health Score
-          </h2>
-          <HealthGauge score={health_score.overall} grade={health_score.grade} size={190} />
-          <p className="text-xs text-text-secondary max-w-xs leading-relaxed">
-            Calculated via weighted drop severity, cliff density, and first-30-seconds hook penalty.
-          </p>
-        </Card>
-
-        <Card className="p-6 lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-heading text-base font-bold text-text-primary">
-              Multi-Dimensional Score Breakdown
-            </h2>
-            <Badge variant="neutral">5 Forensic Pillars</Badge>
-          </div>
-          <ScoreBreakdown score={health_score} />
-        </Card>
-      </div>
-
-      {/* Interactive Retention Curve */}
-      <Card className="p-6 sm:p-8 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-heading text-lg font-bold text-text-primary">
-              Retention Forensics Timeline
-            </h2>
-            <p className="text-xs text-text-secondary">
-              Interactive timeline with cliff drop markers detected by The Mathematician ensemble.
-            </p>
-          </div>
-        </div>
-        <RetentionChart
-          durationSeconds={video.duration_seconds}
-          cliffs={cliff_reports}
-        />
-      </Card>
-
-      {/* Cliff Investigations (Expandable) */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between px-1">
-          <div>
-            <h2 className="font-heading text-xl font-bold text-text-primary">
-              Audience Drop-Off Investigations
-            </h2>
-            <p className="text-xs text-text-tertiary">
-              Deep multimodal analysis with visual, audio, pacing, and critic debate logs
-            </p>
-          </div>
-          <span className="text-xs font-mono text-text-tertiary">
-            {cliff_reports.length} Cliffs Investigated
+      {/* Studio Workspace Tab Navigation Bar */}
+      <div className="flex items-center gap-1.5 p-1.5 bg-stone-100/90 backdrop-blur-sm rounded-2xl border border-stone-200/80 overflow-x-auto shadow-inner">
+        <button
+          type="button"
+          onClick={() => setActiveTab("audit")}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-mono text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === "audit"
+              ? "bg-white text-text-primary shadow-sm"
+              : "text-text-secondary hover:text-text-primary hover:bg-white/50"
+          }`}
+        >
+          <Activity className="w-3.5 h-3.5 text-accent" />
+          <span>Forensic Audit</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-stone-100 text-stone-700 border border-stone-200">
+            {cliff_reports.length} Cliffs
           </span>
-        </div>
+        </button>
 
-        <div className="space-y-4">
-          {cliff_reports.map((cr, idx) => (
-            <CliffCard key={idx} cliffReport={cr} index={idx} />
-          ))}
-        </div>
-      </div>
-
-      {/* Action Items Checklist */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between px-1">
-          <div>
-            <h2 className="font-heading text-xl font-bold text-text-primary">
-              Prescriptive Action Items
-            </h2>
-            <p className="text-xs text-text-tertiary">
-              Concrete timeline fixes ordered by expected retention recovery impact
-            </p>
-          </div>
-          <span className="text-xs font-mono text-text-tertiary">
-            {action_items.length} Action Items
+        <button
+          type="button"
+          onClick={() => setActiveTab("script_doctor")}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-mono text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === "script_doctor"
+              ? "bg-white text-text-primary shadow-sm"
+              : "text-text-secondary hover:text-text-primary hover:bg-white/50"
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-accent" />
+          <span>AI Script Doctor</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-orange-50 text-accent-dark border border-orange-200">
+            3 Modes
           </span>
-        </div>
+        </button>
 
-        <ActionItems items={action_items} />
+        <button
+          type="button"
+          onClick={() => setActiveTab("damage_control")}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-mono text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === "damage_control"
+              ? "bg-white text-text-primary shadow-sm"
+              : "text-text-secondary hover:text-text-primary hover:bg-white/50"
+          }`}
+        >
+          <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+          <span>Damage Control</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-rose-50 text-rose-700 border border-rose-200">
+            Live Triage
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("timeline_export")}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-mono text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === "timeline_export"
+              ? "bg-white text-text-primary shadow-sm"
+              : "text-text-secondary hover:text-text-primary hover:bg-white/50"
+          }`}
+        >
+          <Film className="w-3.5 h-3.5 text-amber-600" />
+          <span>Timeline Markers</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-50 text-amber-800 border border-amber-200">
+            DaVinci / Premiere
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("roi_calculator")}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-mono text-xs font-semibold whitespace-nowrap transition-all ${
+            activeTab === "roi_calculator"
+              ? "bg-white text-text-primary shadow-sm"
+              : "text-text-secondary hover:text-text-primary hover:bg-white/50"
+          }`}
+        >
+          <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Retention ROI</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200">
+            Growth Sim
+          </span>
+        </button>
       </div>
 
-      {/* High-Retention Highlights */}
-      {report.positive_highlights && report.positive_highlights.length > 0 && (
-        <PositiveHighlights highlights={report.positive_highlights} />
+      {/* Active Tab View */}
+      {activeTab === "audit" && (
+        <div className="space-y-10">
+          {/* 2-Column Health Score & Metric Breakdown */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="p-6 space-y-4 flex flex-col items-center justify-center text-center">
+              <h2 className="font-heading text-base font-bold text-text-primary">
+                Retention Health Score
+              </h2>
+              <HealthGauge score={health_score.overall} grade={health_score.grade} size={190} />
+              <p className="text-xs text-text-secondary max-w-xs leading-relaxed">
+                Calculated via weighted drop severity, cliff density, and first-30-seconds hook penalty.
+              </p>
+            </Card>
+
+            <Card className="p-6 lg:col-span-2 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-heading text-base font-bold text-text-primary">
+                  Multi-Dimensional Score Breakdown
+                </h2>
+                <Badge variant="neutral">5 Forensic Pillars</Badge>
+              </div>
+              <ScoreBreakdown score={health_score} />
+            </Card>
+          </div>
+
+          {/* Interactive Retention Curve */}
+          <Card className="p-6 sm:p-8 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-heading text-lg font-bold text-text-primary">
+                  Retention Forensics Timeline
+                </h2>
+                <p className="text-xs text-text-secondary">
+                  Interactive timeline with cliff drop markers detected by The Mathematician ensemble.
+                </p>
+              </div>
+            </div>
+            <RetentionChart
+              durationSeconds={video.duration_seconds}
+              cliffs={cliff_reports}
+            />
+          </Card>
+
+          {/* Cliff Investigations (Expandable) */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <div>
+                <h2 className="font-heading text-xl font-bold text-text-primary">
+                  Audience Drop-Off Investigations
+                </h2>
+                <p className="text-xs text-text-tertiary">
+                  Deep multimodal analysis with visual, audio, pacing, and critic debate logs
+                </p>
+              </div>
+              <span className="text-xs font-mono text-text-tertiary">
+                {cliff_reports.length} Cliffs Investigated
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              {cliff_reports.map((cr, idx) => (
+                <CliffCard key={idx} cliffReport={cr} index={idx} />
+              ))}
+            </div>
+          </div>
+
+          {/* Action Items Checklist */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <div>
+                <h2 className="font-heading text-xl font-bold text-text-primary">
+                  Prescriptive Action Items
+                </h2>
+                <p className="text-xs text-text-tertiary">
+                  Concrete timeline fixes ordered by expected retention recovery impact
+                </p>
+              </div>
+              <span className="text-xs font-mono text-text-tertiary">
+                {action_items.length} Action Items
+              </span>
+            </div>
+
+            <ActionItems items={action_items} />
+          </div>
+
+          {/* High-Retention Highlights */}
+          {report.positive_highlights && report.positive_highlights.length > 0 && (
+            <PositiveHighlights highlights={report.positive_highlights} />
+          )}
+
+          {/* Multi-Agent Methodology & Audit Trail */}
+          <MethodologyNote
+            methodology={report.methodology}
+            generatedAt={report.generated_at}
+          />
+        </div>
       )}
 
-      {/* Multi-Agent Methodology & Audit Trail */}
-      <MethodologyNote
-        methodology={report.methodology}
-        generatedAt={report.generated_at}
-      />
+      {activeTab === "script_doctor" && (
+        <ScriptDoctorSection report={report} onReportUpdate={setReport} />
+      )}
+
+      {activeTab === "damage_control" && (
+        <DamageControlSection report={report} />
+      )}
+
+      {activeTab === "timeline_export" && (
+        <TimelineExportSection report={report} />
+      )}
+
+      {activeTab === "roi_calculator" && (
+        <RetentionRoiSection report={report} />
+      )}
 
       {/* Floating Chat Widget with Agent 8 (The Studio Advisor) */}
       <ChatWidget analysisId={report.report_id} videoTitle={video.title} />
+
+      {/* Delete Confirmation Modal */}
+      <Dialog
+        open={showDeleteModal}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setShowDeleteModal(false);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 mb-3 shadow-sm">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+            </div>
+            <DialogTitle>Delete Forensic Report?</DialogTitle>
+            <DialogDescription className="space-y-2 pt-1 text-xs sm:text-sm">
+              <span>
+                Are you sure you want to permanently delete the audit report for{" "}
+                <strong className="text-text-primary font-semibold">
+                  &ldquo;{video.title}&rdquo;
+                </strong>
+                ?
+              </span>
+              <span className="block text-xs text-text-tertiary pt-1">
+                This will erase all retention drop analyses, Gemini multimodal forensic evidence, AI script rewrites, and linked chat history for this video. You will be redirected to the reports list.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="mt-6 flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowDeleteModal(false)}
+              disabled={isDeleting}
+              className="text-xs"
+            >
+              <span>Cancel</span>
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handleDeleteReport}
+              isLoading={isDeleting}
+              icon={<Trash2 className="w-3.5 h-3.5" />}
+              className="text-xs font-semibold"
+            >
+              <span>Delete Report</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

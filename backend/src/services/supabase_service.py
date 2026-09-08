@@ -75,6 +75,14 @@ class SupabaseService:
         response = self.client.table("analyses").insert(payload).execute()
         return response.data[0] if response.data else None
 
+    def delete_analysis(self, user_id: str, analysis_id: str) -> bool:
+        """Deletes an analysis record belonging to the user."""
+        try:
+            self.client.table("analyses").delete().eq("id", analysis_id).eq("user_id", user_id).execute()
+            return True
+        except Exception:
+            return False
+
     def update_analysis_status(
         self,
         analysis_id: str,

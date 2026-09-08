@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     # AI Models
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3.5-flash-lite"
-    GEMINI_FALLBACK_MODEL: str = "gemini-3.5-flash"
+    GEMINI_FALLBACK_CHAIN: Optional[str] = None
     GEMINI_MAX_RPD: int = 450
     GROQ_API_KEY: str = ""
     GROQ_REPORT_MODEL: str = "openai/gpt-oss-20b"
@@ -55,6 +55,23 @@ class Settings(BaseSettings):
             if clean_frontend not in origins:
                 origins.append(clean_frontend)
         return origins
+
+    @property
+    def gemini_model_chain(self) -> List[str]:
+        """
+        Returns the sequence of Gemini models to attempt in fallback order:
+        gemini-3.8-flash -> gemini-3.7-flash -> gemini-3.6-flash -> gemini-3.5-flash -> gemini-3.5-flash-lite.
+        Can be overridden via GEMINI_FALLBACK_CHAIN env var (e.g. 'gemini-3.5-flash-lite' for local demo testing).
+        """
+        if self.GEMINI_FALLBACK_CHAIN:
+            return [m.strip() for m in self.GEMINI_FALLBACK_CHAIN.split(",") if m.strip()]
+        return [
+            "gemini-3.8-flash",
+            "gemini-3.7-flash",
+            "gemini-3.6-flash",
+            "gemini-3.5-flash",
+            "gemini-3.5-flash-lite",
+        ]
 
 
 settings = Settings()

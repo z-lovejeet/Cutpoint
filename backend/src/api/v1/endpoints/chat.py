@@ -51,37 +51,24 @@ async def chat_with_strategist(
         logger.warning("Error reading report for chat: %s", e)
 
     if not report_dict:
-        # Generate demo report context if not yet persisted
+        from src.api.v1.endpoints.reports import _get_demo_report
+        report_dict = _get_demo_report(analysis_id)
+
+    try:
+        report = ForensicReport.model_validate(report_dict)
+    except Exception:
         from src.models.domain import HealthScore, VideoMetadata
         report = ForensicReport(
             report_id=analysis_id,
             video=VideoMetadata(
-                video_id="demo_vid",
-                title="Retention Audit Demo",
+                video_id="M576WGiDBdQ",
+                title="Why 99% of YouTube Hooks Fail in the First 15 Seconds",
                 channel_id="demo_ch",
-                duration_seconds=720,
+                duration_seconds=702,
             ),
-            health_score=HealthScore(
-                overall=82.0,
-                grade="B",
-                content_score=85.0,
-                pacing_score=78.0,
-                audio_score=80.0,
-                visual_score=84.0,
-                hook_score=81.0,
-            ),
-            executive_summary="Demo report context for interactive evaluator chat.",
+            health_score=HealthScore(overall=82.4, grade="B"),
+            executive_summary="Audience retention forensic report loaded.",
         )
-    else:
-        try:
-            report = ForensicReport.model_validate(report_dict)
-        except Exception:
-            report = ForensicReport(
-                report_id=analysis_id,
-                video=VideoMetadata(video_id="vid", title="Video Audit", channel_id="ch", duration_seconds=600),
-                health_score=HealthScore(overall=80.0, grade="B"),
-                executive_summary="Retention report loaded.",
-            )
 
     # 2. Fetch recent conversation history
     history: List[Dict[str, str]] = []

@@ -241,6 +241,24 @@ export interface MethodologyNote {
   caveats: string;
 }
 
+export interface ScriptRewriteRequest {
+  mode: "hook" | "cliff" | "whole_script";
+  cliff_index?: number;
+  style?: "curiosity" | "contrarian" | "direct_value";
+  custom_instructions?: string;
+}
+
+export interface ScriptRewriteResponse {
+  mode: "hook" | "cliff" | "whole_script";
+  title: string;
+  original_context: string;
+  rewritten_script: string;
+  director_notes: string[];
+  visual_cues: string[];
+  expected_retention_lift: string;
+  saved_to_report?: boolean;
+}
+
 export interface ForensicReport {
   report_id: string;
   video: VideoMetadata;
@@ -251,4 +269,6 @@ export interface ForensicReport {
   positive_highlights: string[];
   methodology: MethodologyNote;
   generated_at: string;
+  rewrites?: Record<string, ScriptRewriteResponse>;
 }
+

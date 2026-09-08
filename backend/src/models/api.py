@@ -65,3 +65,21 @@ class VideoListItem(BaseModel):
     published_at: str = ""
     view_count: int = 0
     duration: str = ""
+
+
+class ScriptRewriteRequest(BaseModel):
+    mode: str = Field(pattern="^(hook|cliff|whole_script)$")
+    cliff_index: Optional[int] = 0
+    style: Optional[str] = "curiosity"
+    custom_instructions: Optional[str] = None
+
+
+class ScriptRewriteResponse(BaseModel):
+    mode: str
+    title: str
+    original_context: str
+    rewritten_script: str
+    director_notes: List[str] = Field(default_factory=list)
+    visual_cues: List[str] = Field(default_factory=list)
+    expected_retention_lift: str
+    saved_to_report: bool = True

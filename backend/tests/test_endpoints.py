@@ -128,3 +128,84 @@ async def test_videos_disconnected_guest():
     assert data == []
 
 
+@pytest.mark.asyncio
+async def test_rewrite_script_endpoints():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        # Test Hook Rewrite
+        resp_hook = await ac.post(
+            "/api/v1/reports/demo-analysis-1/rewrite",
+            json={"mode": "hook", "style": "curiosity"},
+            headers={"X-Guest-Session": "true"},
+        )
+        assert resp_hook.status_code == 200
+        data_hook = resp_hook.json()
+        assert data_hook["mode"] == "hook"
+        assert "rewritten_script" in data_hook
+        assert len(data_hook["director_notes"]) > 0
+
+        # Test Cliff Rewrite
+        resp_cliff = await ac.post(
+            "/api/v1/reports/demo-analysis-1/rewrite",
+            json={"mode": "cliff", "cliff_index": 0},
+            headers={"X-Guest-Session": "true"},
+        )
+        assert resp_cliff.status_code == 200
+        data_cliff = resp_cliff.json()
+        assert data_cliff["mode"] == "cliff"
+        assert "rewritten_script" in data_cliff
+
+        # Test Whole Script Rewrite
+        resp_whole = await ac.post(
+            "/api/v1/reports/demo-analysis-1/rewrite",
+            json={"mode": "whole_script"},
+            headers={"X-Guest-Session": "true"},
+        )
+        assert resp_whole.status_code == 200
+        data_whole = resp_whole.json()
+        assert data_whole["mode"] == "whole_script"
+        assert "5-ACT" in data_whole["rewritten_script"]
+
+
+@pytest.mark.asyncio
+async def test_export_timeline_markers_endpoints():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        # DaVinci CSV
+        resp_csv = await ac.get(
+            "/api/v1/reports/demo-analysis-1/export/davinci_csv",
+            headers={"X-Guest-Session": "true"},
+        )
+        assert resp_csv.status_code == 200
+        assert "Record In,Record Out" in resp_csv.text
+
+        # EDL
+        resp_edl = await ac.get(
+            "/api/v1/reports/demo-analysis-1/export/edl",
+            headers={"X-Guest-Session": "true"},
+        )
+        assert resp_edl.status_code == 200
+        assert "TITLE: Cutpoint Retention Markers" in resp_edl.text
+
+        # YouTube Chapters
+        resp_yt = await ac.get(
+            "/api/v1/reports/demo-analysis-1/export/youtube_chapters",
+            headers={"X-Guest-Session": "true"},
+        )
+        assert resp_yt.status_code == 200
+        assert "00:00 - Introduction & Hook" in resp_yt.text
+
+
+@pytest.mark.asyncio
+async def test_delete_report_endpoint():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.delete(
+            "/api/v1/reports/test-to-delete-123",
+            headers={"X-Guest-Session": "true"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["success"] is True
+        assert data["analysis_id"] == "test-to-delete-123"
+
+
+
+
