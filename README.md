@@ -1,4 +1,4 @@
-# 🎬 Cutpoint
+#  Cutpoint
 
 <div align="center">
 
@@ -19,7 +19,7 @@
 
 ---
 
-## 📌 Overview
+## Overview
 
 Every YouTube creator has stared at a steep cliff in their YouTube Studio retention graph—watching 30% to 50% of their audience vanish at a specific second. YouTube tells you **where** viewers leave, but never **why**.
 
@@ -30,18 +30,18 @@ Every YouTube creator has stared at a steep cliff in their YouTube Studio retent
 
 ---
 
-## ⚡ Key Features
+##  Key Features
 
-- 🔬 **Automated Retention Cliff Detection**: Pure NumPy calculus isolates the sharpest viewership drop-offs in seconds.
-- 👁️ **Multimodal Video Understanding**: Gemini 3.8 Flash watches the exact cliff timestamps (audio, pacing, visual variety, B-roll).
-- 📑 **Actionable Forensic Reports**: Structured diagnosis explaining the root cause of audience loss + prioritized fixes.
-- 💬 **Interactive Chat Agent**: An in-context AI companion (powered by Groq) that answers questions directly about your video's report.
-- 🌐 **Spatial 3D Experience**: Award-winning dark mode interface built with Next.js 15, React Three Fiber, and GSAP.
-- 🔒 **Enterprise-Grade Security**: Supabase Auth with Google OAuth 2.0, Row-Level Security (RLS), and zero client-exposed API keys.
+-  **Automated Retention Cliff Detection**: Pure NumPy calculus isolates the sharpest viewership drop-offs in seconds.
+-  **Multimodal Video Understanding**: Gemini 3.8 Flash watches the exact cliff timestamps (audio, pacing, visual variety, B-roll).
+-  **Actionable Forensic Reports**: Structured diagnosis explaining the root cause of audience loss + prioritized fixes.
+-  **Interactive Chat Agent**: An in-context AI companion (powered by Groq) that answers questions directly about your video's report.
+-  **Spatial 3D Experience**: Award-winning dark mode interface built with Next.js 15, React Three Fiber, and GSAP.
+-  **Enterprise-Grade Security**: Supabase Auth with Google OAuth 2.0, Row-Level Security (RLS), and zero client-exposed API keys.
 
 ---
 
-## 🤖 Multi-Agent Pipeline
+## Multi-Agent Pipeline
 
 Cutpoint uses a high-concurrency, asynchronous agent architecture running via Python `asyncio`:
 
@@ -68,7 +68,7 @@ Cutpoint uses a high-concurrency, asynchronous agent architecture running via Py
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend
 - **Framework**: Next.js 15 (App Router) + TypeScript + React 18/19
@@ -92,7 +92,7 @@ Cutpoint uses a high-concurrency, asynchronous agent architecture running via Py
 
 ---
 
-## 🚀 Quickstart
+## Quickstart
 
 ### Prerequisites
 - Node.js `v20+` (tested on `v24`)
@@ -165,7 +165,7 @@ cutpoint/
 
 ---
 
-## 🗺️ Development Roadmap
+## Development Roadmap
 
 - [x] **Phase 1: Project Foundation** — Monorepo setup, Next.js 15 + R3F, FastAPI + Python 3.13, Docker, Makefile, design tokens.
 - [ ] **Phase 2: Authentication & Database** — Supabase Auth (Google OAuth + Email), PostgreSQL schemas with RLS, auth middleware.
@@ -181,7 +181,7 @@ cutpoint/
 
 ---
 
-## 🏆 Hackathon Context
+## Hackathon Context
 
 Built for the **AI Content Engine Hackathon 2026** on Devpost.
 - **Theme**: *Build tools that automate the channel*
@@ -191,4 +191,4 @@ Built for the **AI Content Engine Hackathon 2026** on Devpost.
 
 ## 📄 License
 
-MIT License © 2026 Cutpoint Team
+MIT License © 2026 Lovejeet Singh
