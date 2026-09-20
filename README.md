@@ -10,7 +10,7 @@
 
 [![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-cutpoint.vercel.app-D95A2B?style=for-the-badge)](https://cutpoint.vercel.app)
 [![API Docs](https://img.shields.io/badge/📡_API_Docs-Swagger_UI-10B981?style=for-the-badge)](https://cutpoint-backend-ldc6.onrender.com/docs)
-[![Judge Mode](https://img.shields.io/badge/🎯_Judge_Mode-1_Click_Access-6366F1?style=for-the-badge)](https://cutpoint.vercel.app/auth/guest)
+[![Instant Sandbox](https://img.shields.io/badge/🎯_Instant_Sandbox-1_Click_Access-6366F1?style=for-the-badge)](https://cutpoint.vercel.app/auth/guest)
 
 ---
 
@@ -304,7 +304,7 @@ erDiagram
 
 ### Why These Are *Real* Agents (Not Prompt Chains)
 
-Most "AI agents" in hackathon projects are sequential LLM calls disguised as agents. Cutpoint's agents are genuinely autonomous:
+Most "AI agent" systems are sequential LLM calls disguised as agents. Cutpoint's agents are genuinely autonomous:
 
 | Property | Prompt Chaining | Cutpoint Agents |
 |----------|----------------|-----------------|
@@ -385,7 +385,7 @@ cutpoint/
 │   │   │   └── settings/page.tsx          # Profile & engine config
 │   │   └── auth/                          # Route handlers
 │   │       ├── callback/route.ts          # OAuth exchange
-│   │       ├── guest/route.ts             # 1-click judge entry
+│   │       ├── guest/route.ts             # 1-click guest sandbox entry
 │   │       └── sign-out/route.ts          # Session teardown
 │   ├── components/
 │   │   ├── ui/                            # 13 primitives
@@ -498,7 +498,7 @@ Base URL: `https://cutpoint-backend-ldc6.onrender.com/api/v1`
 
 ---
 
-## Judge / Evaluator Guide
+## Instant Guest Sandbox & Demo Guide
 
 **No signup. No API keys. Full access in 1 click.**
 
@@ -583,11 +583,7 @@ make docker-build  # Build containers
 
 ---
 
-## Hackathon Context
-
-Built for the **AI Content Engine Hackathon 2026** on Devpost.
-
-> *"Build tools that automate the channel."*
+## Mission
 
 Cutpoint solves the biggest unsolved problem in creator analytics: **the gap between retention data and retention understanding**. YouTube shows the graph. Cutpoint shows the story behind every drop — and the exact edits to fix it.
 
